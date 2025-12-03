@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package shared.protos.frontier;
+
+message Frontier {
+  string url = 1;
+}
+
+message FrontierRequest {
+  string url = 1;
+}
+
+message FrontierResponse {
+  string url = 1;
+  string status = 2;
+}
+
+service FrontierService {
+  rpc Crawl(FrontierRequest) returns (FrontierResponse);
+}
