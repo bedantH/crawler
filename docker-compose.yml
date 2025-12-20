@@ -45,6 +45,18 @@ services:
     networks:
       - app-network
 
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=master
+      - POSTGRES_PASSWORD=masterpass
+      - POSTGRES_DB=crawler
+    networks:
+      - app-network
+
 volumes:
   data:
     driver: local

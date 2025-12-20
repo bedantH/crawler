@@ -1,6 +1,6 @@
 import docker
-from master.queue import get_mq_channel
-from services.frontier.src.frontier.utils.logger import logger
+from master.infra.queue import get_mq_channel
+from shared.utils import logger
 
 IMAGE_NAME="slave:latest"
 

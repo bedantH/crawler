@@ -1,30 +1,46 @@
-from .queue import get_mq_channel
-from .db import init, cursor
+from master.infra.queue import get_mq_channel
 from shared.config import MAX_TASKS_THRESHOLD
+from shared.database.engine import engine
+from sqlmodel import Session, select, SQLModel
+from shared.database.models.worker import Worker
+from shared.database.models.task import Task
+from sqlalchemy import func
+import uuid
+
+class WorkerStatsModel(SQLModel):
+    id: uuid.UUID
+    task_count: int
 
 def on_message_callback(ch, method, properties, body):
-    existing_tasks_stats = """
-        SELECT w.id, w.hostname, COUNT(DISTINCT t.id) AS task_count
-        FROM workers w
-        LEFT JOIN tasks t 
-            ON w.id = t.worker_id
-        GROUP BY w.id, w.hostname;
-    """
-    cursor.execute(existing_tasks_stats)
-    all_workers = cursor.fetchall()
+    with Session(engine) as session:
+        existing_tasks_stat_query = (
+            select(
+                Worker.id,
+                func.count(func.distinct(Task.id)).label("task_count"),
+            )
+            .select_from(Worker)
+            .outerjoin(Task)
+            .group_by(Worker.id, Worker.hostname) # type: ignore
+        )
+        
+        results = session.exec(existing_tasks_stat_query).all()
+        all_workers = [
+            WorkerStatsModel(id=row[0], task_count=row[1])
+            for row in results
+        ]
 
     # handling a case where there are currently no active workers
     if len(all_workers) == 0:
         # TODO: Start the first worker instance
         pass
     else:
-        if all(worker['task_count'] == MAX_TASKS_THRESHOLD for worker in all_workers):
+        if all(worker.task_count == MAX_TASKS_THRESHOLD for worker in all_workers):
             # TODO: Create New instance here
             pass
         else:
             least_task_worker = all_workers[0]
             for worker in all_workers:
-                if worker['task_count'] < least_task_worker:
+                if worker.task_count < least_task_worker.task_count:
                     least_task_worker = worker
 
             # TODO: assign the task to the least loaded instance
@@ -43,7 +59,6 @@ if __name__ == "__main__":
 
     try:
         channel.start_consuming()
-        init()
     except KeyboardInterrupt:
         print(" [x] Stopping consumption")
         channel.stop_consuming()

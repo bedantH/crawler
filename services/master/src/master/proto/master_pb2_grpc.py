@@ -39,10 +39,10 @@ class MasterServiceStub(object):
                 request_serializer=master__pb2.TaskUpdateRequest.SerializeToString,
                 response_deserializer=master__pb2.TaskUpdateResponse.FromString,
                 _registered_method=True)
-        self.GetWorkerStatus = channel.unary_unary(
-                '/master.MasterService/GetWorkerStatus',
-                request_serializer=master__pb2.WorkerStatusRequest.SerializeToString,
-                response_deserializer=master__pb2.WorkerStatusResponse.FromString,
+        self.HandleHeartbeat = channel.unary_unary(
+                '/master.MasterService/HandleHeartbeat',
+                request_serializer=master__pb2.HeartbeatRequest.SerializeToString,
+                response_deserializer=master__pb2.HeartbeatResponse.FromString,
                 _registered_method=True)
 
 
@@ -55,7 +55,7 @@ class MasterServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetWorkerStatus(self, request, context):
+    def HandleHeartbeat(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -69,10 +69,10 @@ def add_MasterServiceServicer_to_server(servicer, server):
                     request_deserializer=master__pb2.TaskUpdateRequest.FromString,
                     response_serializer=master__pb2.TaskUpdateResponse.SerializeToString,
             ),
-            'GetWorkerStatus': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetWorkerStatus,
-                    request_deserializer=master__pb2.WorkerStatusRequest.FromString,
-                    response_serializer=master__pb2.WorkerStatusResponse.SerializeToString,
+            'HandleHeartbeat': grpc.unary_unary_rpc_method_handler(
+                    servicer.HandleHeartbeat,
+                    request_deserializer=master__pb2.HeartbeatRequest.FromString,
+                    response_serializer=master__pb2.HeartbeatResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -113,7 +113,7 @@ class MasterService(object):
             _registered_method=True)
 
     @staticmethod
-    def GetWorkerStatus(request,
+    def HandleHeartbeat(request,
             target,
             options=(),
             channel_credentials=None,
@@ -126,9 +126,9 @@ class MasterService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/master.MasterService/GetWorkerStatus',
-            master__pb2.WorkerStatusRequest.SerializeToString,
-            master__pb2.WorkerStatusResponse.FromString,
+            '/master.MasterService/HandleHeartbeat',
+            master__pb2.HeartbeatRequest.SerializeToString,
+            master__pb2.HeartbeatResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -149,17 +149,17 @@ class WorkerServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.Heartbeat = channel.unary_unary(
-                '/master.WorkerService/Heartbeat',
-                request_serializer=master__pb2.HeartbeatRequest.SerializeToString,
-                response_deserializer=master__pb2.HeartbeatResponse.FromString,
+        self.GetWorkerStatus = channel.unary_unary(
+                '/master.WorkerService/GetWorkerStatus',
+                request_serializer=master__pb2.WorkerStatusRequest.SerializeToString,
+                response_deserializer=master__pb2.WorkerStatusResponse.FromString,
                 _registered_method=True)
 
 
 class WorkerServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def Heartbeat(self, request, context):
+    def GetWorkerStatus(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -168,10 +168,10 @@ class WorkerServiceServicer(object):
 
 def add_WorkerServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Heartbeat': grpc.unary_unary_rpc_method_handler(
-                    servicer.Heartbeat,
-                    request_deserializer=master__pb2.HeartbeatRequest.FromString,
-                    response_serializer=master__pb2.HeartbeatResponse.SerializeToString,
+            'GetWorkerStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetWorkerStatus,
+                    request_deserializer=master__pb2.WorkerStatusRequest.FromString,
+                    response_serializer=master__pb2.WorkerStatusResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -185,7 +185,7 @@ class WorkerService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def Heartbeat(request,
+    def GetWorkerStatus(request,
             target,
             options=(),
             channel_credentials=None,
@@ -198,9 +198,9 @@ class WorkerService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/master.WorkerService/Heartbeat',
-            master__pb2.HeartbeatRequest.SerializeToString,
-            master__pb2.HeartbeatResponse.FromString,
+            '/master.WorkerService/GetWorkerStatus',
+            master__pb2.WorkerStatusRequest.SerializeToString,
+            master__pb2.WorkerStatusResponse.FromString,
             options,
             channel_credentials,
             insecure,

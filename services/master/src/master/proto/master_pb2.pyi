@@ -7,38 +7,32 @@ from typing import ClassVar as _ClassVar, Optional as _Optional
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class HeartbeatRequest(_message.Message):
-    __slots__ = ("timestamp",)
-    TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
-    timestamp: int
-    def __init__(self, timestamp: _Optional[int] = ...) -> None: ...
+    __slots__ = ("worker_id", "tasks_completed", "tasks_in_queue", "status")
+    WORKER_ID_FIELD_NUMBER: _ClassVar[int]
+    TASKS_COMPLETED_FIELD_NUMBER: _ClassVar[int]
+    TASKS_IN_QUEUE_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    worker_id: str
+    tasks_completed: int
+    tasks_in_queue: int
+    status: str
+    def __init__(self, worker_id: _Optional[str] = ..., tasks_completed: _Optional[int] = ..., tasks_in_queue: _Optional[int] = ..., status: _Optional[str] = ...) -> None: ...
 
 class HeartbeatResponse(_message.Message):
-    __slots__ = ("worker_id", "current_task_count", "status", "in_progress_task_ids")
-    WORKER_ID_FIELD_NUMBER: _ClassVar[int]
-    CURRENT_TASK_COUNT_FIELD_NUMBER: _ClassVar[int]
-    STATUS_FIELD_NUMBER: _ClassVar[int]
-    IN_PROGRESS_TASK_IDS_FIELD_NUMBER: _ClassVar[int]
-    worker_id: str
-    current_task_count: int
-    status: str
-    in_progress_task_ids: _containers.RepeatedScalarFieldContainer[str]
-    def __init__(self, worker_id: _Optional[str] = ..., current_task_count: _Optional[int] = ..., status: _Optional[str] = ..., in_progress_task_ids: _Optional[_Iterable[str]] = ...) -> None: ...
+    __slots__ = ("heartbeat_ack",)
+    HEARTBEAT_ACK_FIELD_NUMBER: _ClassVar[int]
+    heartbeat_ack: str
+    def __init__(self, heartbeat_ack: _Optional[str] = ...) -> None: ...
 
 class TaskUpdateRequest(_message.Message):
-    __slots__ = ("worker_id", "task_id", "status", "url", "error_message", "timestamp")
+    __slots__ = ("worker_id", "task_id", "status")
     WORKER_ID_FIELD_NUMBER: _ClassVar[int]
     TASK_ID_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
-    URL_FIELD_NUMBER: _ClassVar[int]
-    ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
-    TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
     worker_id: str
     task_id: str
     status: str
-    url: str
-    error_message: str
-    timestamp: int
-    def __init__(self, worker_id: _Optional[str] = ..., task_id: _Optional[str] = ..., status: _Optional[str] = ..., url: _Optional[str] = ..., error_message: _Optional[str] = ..., timestamp: _Optional[int] = ...) -> None: ...
+    def __init__(self, worker_id: _Optional[str] = ..., task_id: _Optional[str] = ..., status: _Optional[str] = ...) -> None: ...
 
 class TaskUpdateResponse(_message.Message):
     __slots__ = ("acknowledged",)

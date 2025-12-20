@@ -3,23 +3,20 @@ syntax = "proto3";
 package master;
 
 message HeartbeatRequest {
-  int64 timestamp = 1;
+  string worker_id = 1;
+  int64 tasks_completed = 2;
+  int64 tasks_in_queue = 3;
+  string status = 4; // "idle" | "busy" | "failed" | "shutting_down"
 }
 
 message HeartbeatResponse {
-  string worker_id = 1;
-  int32 current_task_count = 2;
-  string status = 3;  // "idle", "busy", "full"
-  repeated string in_progress_task_ids = 4;  // Tasks currently being processed
+  string heartbeat_ack = 1;
 }
 
 message TaskUpdateRequest {
   string worker_id = 1;
   string task_id = 2;
-  string status = 3;  // "started", "completed", "failed"
-  string url = 4;
-  string error_message = 5;  // Only if status is "failed"
-  int64 timestamp = 6;
+  string status = 3;
 }
 
 message TaskUpdateResponse {
@@ -32,7 +29,7 @@ message WorkerStatusRequest {
 
 message WorkerStatusResponse {
   string worker_id = 1;
-  string status = 2;  // "active", "idle", "offline", "error"
+  string status = 2;
   int64 last_heartbeat = 3;
   int64 created_at = 4;
   int32 current_task_count = 5;
@@ -41,9 +38,9 @@ message WorkerStatusResponse {
 
 service MasterService {
   rpc ReportTaskUpdate(TaskUpdateRequest) returns (TaskUpdateResponse);
-  rpc GetWorkerStatus(WorkerStatusRequest) returns (WorkerStatusResponse);
+  rpc HandleHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 }
 
 service WorkerService {
-  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc GetWorkerStatus(WorkerStatusRequest) returns (WorkerStatusResponse);
 }
