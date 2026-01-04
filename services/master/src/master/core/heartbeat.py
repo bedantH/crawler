@@ -1,12 +1,15 @@
 import threading
+from datetime import datetime, timedelta
 import time
 from master.core.master_grpc_server import serve
 from shared.utils import logger
-from master.infra.db import DBConnection
-from services.master.src.master.config.settings import HEARTBEAT_TIMEOUT
+from shared.database.engine import engine
+from sqlmodel import Session, select
+from master.config.settings import HEARTBEAT_TIMEOUT
+from shared.database.models.worker import Worker
 
 class Heartbeat:
-  def __init__(self, timeout: int = 5, check_interval: int = 2) -> None:
+  def __init__(self, timeout: int = HEARTBEAT_TIMEOUT, check_interval: int = 2) -> None:
     self.check_interval = check_interval
     self.timeout = timeout
     self.running = True
@@ -30,25 +33,17 @@ class Heartbeat:
     """
     Handling heartbeat response
     """
-    db = DBConnection()
-    cursor = db.get_cursor()
+    with Session(engine) as session:
+      cutoff = datetime.utcnow() - timedelta(seconds=self.timeout)
 
-    get_dead_workers = """
-      SELECT id AS worker_id FROM workers
-      WHERE (? - last_heartbeat) >= ?;
-    """
-    
-    now = time.time()
-    cursor.execute(get_dead_workers, (now, HEARTBEAT_TIMEOUT))
+      dead_workers_st = select(Worker.id).where(
+        Worker.last_heartbeat < cutoff
+      )
 
-    dead_workers = cursor.fetchall()
+      dead_workers = session.exec(dead_workers_st).all()
 
-    if len(dead_workers) == 0:
-      logger.info("No dead workers found at the moment")
-    else:
+    if len(dead_workers) > 0:
       # TODO: do something with the dead workers:
         # get all the tasks and reschedule them
         # replace the a new worker
       pass
-
-    db.close_conn()

@@ -19,10 +19,10 @@ class Worker(SQLModel, table=True):
       Index("idx_worker_last_heartbeat", "last_heartbeat"),
   )
 
-  id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+  id: uuid.UUID = Field(primary_key=True)
   hostname: str = Field(nullable=False)
 
-  status: WorkerStatus = Field(nullable=False, default=WorkerStatus.STOPPED)  # idle, busy, failed, shutting_down
+  status: WorkerStatus = Field(nullable=False, default=WorkerStatus.IDLE)  # idle, busy, failed, shutting_down
 
   last_heartbeat: Optional[datetime] = None
   created_at: datetime = Field(default_factory=datetime.utcnow)

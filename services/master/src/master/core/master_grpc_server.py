@@ -2,28 +2,28 @@ from concurrent import futures
 import grpc
 import master.proto.master_pb2 as master__pb2
 import master.proto.master_pb2_grpc as master_pb2_grpc
+from shared.database.models.worker import Worker
+from shared.database.models.task import Task
 from typing import override
 from shared.utils import logger
 from datetime import datetime
 import time
-from services.master.src.master.infra.db import DBConnection
+from shared.database.engine import engine
+from sqlmodel import Session, select, update
 
 class MasterServicer(master_pb2_grpc.MasterServiceServicer):
   @override
   def ReportTaskUpdate(self, request: master__pb2.TaskUpdateRequest, context: grpc.ServicerContext):
     try:
-      db = DBConnection()
-      cursor = db.get_cursor()
-
       worker_id = request.worker_id
       task_id = request.task_id
       status = request.status
 
-      cursor.execute("""
-         SELECT * FROM workers WHERE id = ? AND status != 'failed';        
-      """, (worker_id,))
-
-      worker = cursor.fetchone()
+      with Session(engine) as session:
+        select_worker_st = select(Worker).where(
+          (Worker.id == worker_id) & (Worker.status != 'failed')
+        )
+        worker = session.exec(select_worker_st).first()
 
       ALLOWED = {'assigned', 'running', 'failed', 'completed', 'rescheduled', 'cancelled'}
       if worker is None or request.status not in ALLOWED:
@@ -31,35 +31,28 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
       
       now = datetime.now()
 
-      set_keys: list[str] = ['status = ?']
-      set_values: list = [status]
+      update_data = {
+        'status': status
+      }
 
       if status == "running":
-        set_keys.append('started_at = ?')
-        set_values.append(now)
+        update_data['started_at'] = now
 
       if status in ('completed', 'cancelled'):
-        set_keys.append("finished_at = ?")
-        set_values.append(now)
+        update_data['finished_at'] = now
 
       if worker['status'] == "rescheduled" and status == "running":
-        set_keys.append("retries = ?")
-        total_retries = worker['retries'] + 1
+        update_data['retries'] = worker['retries'] + 1
 
-        set_values.append(total_retries)
+      with Session(engine) as session:
+        update_worker_st = update(Task).where((Task.id == task_id) & (Task.worker_id == worker_id)).values(
+          **update_data          
+        )
 
-      set_clause_str = ", ".join(set_keys)
+        session.exec(update_worker_st)
+        session.commit()
 
-      update_query = f"""
-        UPDATE tasks 
-        SET {set_clause_str}
-        WHERE task_id = ? AND worker_id = ?
-      """
-
-      cursor.execute(update_query, set_values + [task_id, worker_id])
-
-      db.conn.commit()
-      db.close_conn()
+      return master__pb2.TaskUpdateResponse(acknowledged=True)
 
     except Exception as e:
       logger.error("Error occurred when receiving task update from request: %s, %s", request, e, exc_info=True)
@@ -73,33 +66,29 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
       tasks_completed = request.tasks_completed
       tasks_in_queue = request.tasks_in_queue
 
-      db = DBConnection()
-      cursor = db.get_cursor()
-
-      cursor.execute("""
-        SELECT * FROM workers WHERE id = ? AND status != 'failed';
-      """, (worker_id,))
-
-      worker = cursor.fetchone()
+      with Session(engine) as session:
+        select_worker_st = select(Worker).where(
+          (Worker.id == worker_id) & (Worker.status != 'failed')
+        )
+        worker = session.exec(select_worker_st).first()
 
       if worker == None or status not in ['busy', 'idle', 'shutting_down']:
         return master__pb2.HeartbeatResponse(heartbeat_ack="failed")
       
-      total_tasks_completed = worker.get('total_tasks_completed', 0) + tasks_completed
+      total_tasks_completed = worker.total_tasks_completed + tasks_completed
       now = time.time()
-      update_query = """
-        UPDATE workers
-        SET status = ?, 
-            last_heartbeat = ?,
-            total_tasks_completed = ?,
-            tasks_in_queue = ?
-        WHERE id = ?
-      """
-      cursor.execute(update_query, (status, now, total_tasks_completed, tasks_in_queue, worker_id))
 
-      db.conn.commit()
-      db.close_conn()
+      with Session(engine) as session:
+        update_query = update(Worker).where(Worker.id == worker_id).values(
+          status=status,
+          last_heartbeat=datetime.fromtimestamp(now),
+          total_tasks_completed=total_tasks_completed,
+          tasks_in_queue=tasks_in_queue
+        )
 
+        session.exec(update_query)
+        session.commit()
+        
       return master__pb2.HeartbeatResponse(heartbeat_ack="success")
     except Exception as e:
       logger.error("Error occurred while handling heartbeat from %s: %s", request, e, exc_info=True)
