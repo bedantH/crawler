@@ -1,7 +1,6 @@
 import pika
 
 from shared.config import AMQP_URL
-from services.slave.src.slave.queue import connection
 
 def get_mq_connection():
     parameters = pika.URLParameters(AMQP_URL)
