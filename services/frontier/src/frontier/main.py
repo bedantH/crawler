@@ -3,8 +3,8 @@ from sqlmodel import Session, select
 from sqlalchemy import exc
 from shared.database.models.crawl_requests import CrawlRequest, CrawlStatus
 
-import pika
 from shared.database.engine import engine
+from shared.queue.base_publisher import BasePublisher
 from .mq.queue import get_mq_channel
 from .dto.crawl import CrawlRequest as CrawlRequestDTO
 from .frontier_grpc_server import serve 
@@ -84,6 +84,9 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
       try:
         session.add(crawl_request_mo)
         session.commit()
+        # refresh crawl_request_mo to get id later
+        session.refresh(crawl_request_mo)
+
       except exc.DuplicateColumnError as e:
         logger.error("Duplicate Column: %s", e, exc_info=True)
         return HTTPException(status_code=409, detail="Crawl Request already Exists")
@@ -92,25 +95,23 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
         return HTTPException(status_code=500, detail="Failed to insert crawl request")
 
     logger.info(f"Created crawl request with ID: {crawl_request_mo.id}")
-    logger.info("Sending crawl request to queue")
+    
+    try:  
+      logger.info("Sending crawl request to queue")
 
-    channel = get_mq_channel()
-    crawl_body = crawl_request_mo.model_dump(mode="json")
-    channel.basic_publish(
-      exchange='',
-      routing_key='crawl_requests',
-      body=json.dumps({
+      publisher = BasePublisher("crawl_requests")
+      crawl_body = crawl_request_mo.model_dump(mode="json")
+      publisher.publish("crawl_request", {
         "url": crawl_body["url"],
         "depth": 0
-      }),
-      properties=pika.BasicProperties(
-        delivery_mode=2,
-      )
-    )
+      })
 
-    logger.info(f"Crawl request {crawl_request_mo.id} sent to queue")
+      logger.info(f"Crawl request {crawl_request_mo.id} sent to queue")
+      return crawl_request_mo
+    except Exception as e:
+      logger.error("Failed to publish crawl request: %s", e, exc_info=True)
 
-    return crawl_request_mo
   except Exception as e:
     logger.error("Internal Server Error: %s", e, exc_info=True)
     return HTTPException(status_code=500, detail="Internal Server Error")
+  

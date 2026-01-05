@@ -5,7 +5,9 @@ from sqlmodel import Session, select, SQLModel
 from shared.database.models.worker import Worker
 from shared.database.models.task import Task
 from sqlalchemy import func
+from master.core.heartbeat import Heartbeat
 import uuid
+from master.core.consumer import MasterConsumer
 
 class WorkerStatsModel(SQLModel):
     id: uuid.UUID
@@ -49,19 +51,15 @@ def on_message_callback(ch, method, properties, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 if __name__ == "__main__":
-    channel = get_mq_channel()
-    channel.queue_declare(queue='crawl_requests', durable=True)
+    # Start the heartbeat loop
+    heartbeat = Heartbeat()
+    heartbeat.init()
 
-    channel.basic_qos(prefetch_count=1)
-    print(" [*] Waiting for messages. To exit press CTRL+C")
+    # setup consumer
+    consumer = MasterConsumer(
+        exchange_name="crawl_requests",
+        queue_name="crawl_requests_queue",
+        routing_key="crawl_request"
+    )
 
-    channel.basic_consume(queue='crawl_requests', on_message_callback=on_message_callback)
-
-    try:
-        channel.start_consuming()
-    except KeyboardInterrupt:
-        print(" [x] Stopping consumption")
-        channel.stop_consuming()
-    finally:
-        connection = channel.connection
-        connection.close()
+    consumer.start()

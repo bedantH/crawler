@@ -10,6 +10,7 @@ requires-python = ">=3.13"
 dependencies = [
     "grpcio>=1.76.0",
     "grpcio-tools>=1.76.0",
+    "sqlmodel>=0.0.31",
 ]
 
 [project.scripts]
@@ -19,10 +20,21 @@ web-crawler = "web_crawler:main"
 requires = ["uv_build>=0.9.5,<0.10.0"]
 build-backend = "uv_build"
 
+[tool.uv.sources]
+frontier = { workspace = true }
+slave = { workspace = true }
+master = { workspace = true }
+
 [tool.uv.workspace]
 members = [
-    "services/frontier",
-    "services/master",
-    "services/slave",
+    "services/*",
     "shared",
 ]
+
+[tool.uv]
+dev-dependencies = [
+    "frontier",
+    "slave",
+    "master",
+]
+package = false

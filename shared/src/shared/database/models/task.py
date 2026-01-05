@@ -1,6 +1,7 @@
 from datetime import datetime
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
 from typing import Optional
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import Index
 import uuid
 from enum import Enum
@@ -20,7 +21,10 @@ class Task(SQLModel, table=True):
         Index("idx_task_worker_status", "worker_id", "status"),
     )
 
-  id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+  id: uuid.UUID = Field(
+    sa_column=Column(UUID(as_uuid=True), primary_key=True),
+    default_factory=uuid.uuid4
+  )
 
   worker_id: Optional[uuid.UUID] = Field(
       default=None,
