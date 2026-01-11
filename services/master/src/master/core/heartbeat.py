@@ -37,7 +37,7 @@ class Heartbeat:
       cutoff = datetime.utcnow() - timedelta(seconds=self.timeout)
 
       dead_workers_st = select(Worker.id).where(
-        Worker.last_heartbeat < cutoff
+        (Worker.last_heartbeat < cutoff)
       )
 
       dead_workers = session.exec(dead_workers_st).all()

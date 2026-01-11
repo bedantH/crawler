@@ -24,7 +24,7 @@ class Worker(SQLModel, table=True):
 
   status: WorkerStatus = Field(nullable=False, default=WorkerStatus.IDLE)  # idle, busy, failed, shutting_down
 
-  last_heartbeat: Optional[datetime] = None
+  last_heartbeat: datetime = Field(default_factory=datetime.utcnow)
   created_at: datetime = Field(default_factory=datetime.utcnow)
   registered_at: datetime = Field(nullable=False)
 
