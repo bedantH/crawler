@@ -35,3 +35,7 @@ class MQConnection:
             if not MQConnection._connection.is_closed:
                 MQConnection._connection.close()
             MQConnection._connection = None
+
+    def get_channel(self):
+        connection = self.connect()
+        return connection.channel()

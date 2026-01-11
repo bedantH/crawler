@@ -1,59 +1,84 @@
 import docker
-from master.infra.queue import get_mq_channel
+from docker import errors as docker_errors
 from shared.utils import logger
 import time
+from shared.queue.connection import MQConnection
 
-IMAGE_NAME="worker:latest"
+IMAGE_NAME = "worker:latest"
 
-# get docker instance from docker daemon
-client = docker.from_env()
+def poll_running_status(container, timeout: int = 10) -> bool:
+    start = time.time()
 
-def poll_running_status(container, timeout=10):
-  start = time.time()
-  
-  while time.time() - start < timeout:
+    while time.time() - start < timeout:
+        try:
+            container.reload()
+
+            if container.status == "running":
+                return True
+        except docker_errors.NotFound:
+            pass
+
+        time.sleep(0.5)
+
+    return False
+
+def create_worker_container(worker_id: str) -> bool:
+    client = None
+    container = None
+
     try:
-      container.reload()
+        client = docker.from_env()
 
-      if container.status == "running":
-        return True
-    except docker.errors.NotFound:
-      pass
-
-    time.sleep(0.5)
-
-  return False
-
-def create_worker_container(uuid: str):
-    try:
-        # create docker using the image with name as the uuid passed
         container = client.containers.run(
             image=IMAGE_NAME,
-            name=uuid,
-            environment={ "WORKER_ID": uuid },
-            detach=True
+            name=worker_id,
+            environment={"WORKER_ID": worker_id},
+            detach=True,
         )
 
         container_is_running = poll_running_status(container, timeout=10)
 
-        if container_is_running:
-            channel = get_mq_channel()
-            channel.queue_declare(f"{uuid}-queue")
-            return True
-        else:
-            return False, "Failed to create the container"
-        
-    except docker.errors.ImageNotFound:
-        logger.error("Docker image %s not found", IMAGE_NAME)
-        return False, "Image not found"
+        if not container_is_running:
+            logger.error("Container did not reach running state for worker %s", worker_id)
+            try:
+                container.remove(force=True)
+            except Exception:
+                pass
+            return False
 
-    except docker.errors.APIError as e:
+        try:
+            with MQConnection().channel() as channel:
+                channel.queue_declare(queue=f"{worker_id}-queue", durable=True)
+        except Exception as e:
+            logger.error("Failed to declare queue for worker %s: %s", worker_id, e, exc_info=True)
+            try:
+                container.remove(force=True)
+            except Exception:
+                pass
+            return False
+
+        return True
+
+    except docker_errors.ImageNotFound:
+        logger.error("Docker image %s not found", IMAGE_NAME)
+        return False
+
+    except docker_errors.APIError as e:
         logger.error("Docker API error: %s", e, exc_info=True)
-        return False, "Docker API error"
+        try:
+            if container:
+                container.remove(force=True)
+        except Exception:
+            pass
+        return False
 
     except Exception as e:
-        logger.error("Error occurred when creating a new container: %s", e, exc_info=True)
-
-    return False
+        logger.error("Error occurred when creating a new container for worker %s: %s", worker_id, e, exc_info=True)
+        try:
+            if container:
+                container.remove(force=True)
+        except Exception:
+            pass
+        return False
 
    

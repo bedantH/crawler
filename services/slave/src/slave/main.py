@@ -1,6 +1,5 @@
 import shared.protos.frontier.frontier_pb2 as frontier__pb2
 import shared.protos.frontier.frontier_pb2_grpc as frontier_pb2_grpc
-from shared.queue import exchange
 from slave.config import WORKER_ID
 from slave.runtime.consumer import WorkerConsumer
 import asyncio
@@ -30,7 +29,7 @@ if __name__ == '__main__':
     )
 
     tasks = [
-      consumer.start_consume(stop_event=stop_event) 
+      consumer.start_consume(stop_event=stop_event),
     ]
   
 

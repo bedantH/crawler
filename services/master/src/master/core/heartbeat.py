@@ -43,7 +43,6 @@ class Heartbeat:
       dead_workers = session.exec(dead_workers_st).all()
 
     if len(dead_workers) > 0:
-      # TODO: do something with the dead workers:
-        # get all the tasks and reschedule them
-        # replace the a new worker
-      pass
+        logger.info("Dead workers detected: %s", len(dead_workers))
+        for worker in dead_workers:
+            logger.info("Dead Worker: %s", worker)

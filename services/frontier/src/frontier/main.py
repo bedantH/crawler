@@ -5,26 +5,20 @@ from shared.database.models.crawl_requests import CrawlRequest, CrawlStatus
 
 from shared.database.engine import engine
 from shared.queue.base_publisher import BasePublisher
-from .mq.queue import get_mq_channel
 from .dto.crawl import CrawlRequest as CrawlRequestDTO
 from .frontier_grpc_server import serve 
 from contextlib import asynccontextmanager
 from shared.utils import logger
-import json
+import asyncio
 
 def start_grpc_server():
   import threading
   grpc_thread = threading.Thread(target=serve, daemon=True)
   grpc_thread.start()
 
-def create_queue_client():
-  channel = get_mq_channel()
-  channel.queue_declare(queue='crawl_requests', durable=True)
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
   start_grpc_server()
-  create_queue_client()
   logger.info("Frontier service started")
   
   try:
@@ -46,15 +40,6 @@ def health_check():
 @app.post('/crawl')
 async def crawl(request: Request, crawl_request: CrawlRequestDTO):
   try:
-    # Implement the crawl logic here
-    # TODO: 
-      # Create an object in MongoDB called crawl_request, with a unique ID
-      # Queue the crawl request for processing, using the unique ID as the queue item ID
-      # Update redis records for the URL and ID
-      # Next, update the status of the crawl request in MongoDB to "queued"
-      # And return a crawl request ID for polling in future
-      # Rest will be handled by the worker master when it reads the crawl request from the queue
-    
     url = crawl_request.url
     depth: int = crawl_request.depth
     max_pages = crawl_request.max_pages

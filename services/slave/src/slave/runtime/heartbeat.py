@@ -9,5 +9,8 @@ import master.proto.master_pb2_grpc as master_pb2_grpc
 class Hearbeat():
     def __init__(self):
         pass
+    
+    def send_heartbeat(self):
+        pass
 
     

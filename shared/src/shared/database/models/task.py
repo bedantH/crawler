@@ -26,13 +26,13 @@ class Task(SQLModel, table=True):
     default_factory=uuid.uuid4
   )
 
-  worker_id: Optional[uuid.UUID] = Field(
+  worker_id: uuid.UUID = Field(
       default=None,
       foreign_key="worker.id",
   )
 
   payload: Optional[str] = Field(nullable=True)
-  status: TaskStatus = Field(nullable=False, ) # Pending, Assigned, Running, Completed, Failed, Rescheduled, Cancelled
+  status: TaskStatus = Field(nullable=False, default_factory=TaskStatus.PENDING) # Pending, Assigned, Running, Completed, Failed, Rescheduled, Cancelled
   retries: int = Field(default=0, nullable=False)
 
   created_at: datetime = Field(default_factory=datetime.utcnow)
