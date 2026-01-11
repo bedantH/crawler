@@ -3,28 +3,22 @@ from sqlmodel import Session, select
 from sqlalchemy import exc
 from shared.database.models.crawl_requests import CrawlRequest, CrawlStatus
 
-import pika
 from shared.database.engine import engine
-from .mq.queue import get_mq_channel
+from shared.queue.base_publisher import BasePublisher
 from .dto.crawl import CrawlRequest as CrawlRequestDTO
 from .frontier_grpc_server import serve 
 from contextlib import asynccontextmanager
 from shared.utils import logger
-import json
+import asyncio
 
 def start_grpc_server():
   import threading
   grpc_thread = threading.Thread(target=serve, daemon=True)
   grpc_thread.start()
 
-def create_queue_client():
-  channel = get_mq_channel()
-  channel.queue_declare(queue='crawl_requests', durable=True)
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
   start_grpc_server()
-  create_queue_client()
   logger.info("Frontier service started")
   
   try:
@@ -46,15 +40,6 @@ def health_check():
 @app.post('/crawl')
 async def crawl(request: Request, crawl_request: CrawlRequestDTO):
   try:
-    # Implement the crawl logic here
-    # TODO: 
-      # Create an object in MongoDB called crawl_request, with a unique ID
-      # Queue the crawl request for processing, using the unique ID as the queue item ID
-      # Update redis records for the URL and ID
-      # Next, update the status of the crawl request in MongoDB to "queued"
-      # And return a crawl request ID for polling in future
-      # Rest will be handled by the worker master when it reads the crawl request from the queue
-    
     url = crawl_request.url
     depth: int = crawl_request.depth
     max_pages = crawl_request.max_pages
@@ -84,6 +69,9 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
       try:
         session.add(crawl_request_mo)
         session.commit()
+        # refresh crawl_request_mo to get id later
+        session.refresh(crawl_request_mo)
+
       except exc.DuplicateColumnError as e:
         logger.error("Duplicate Column: %s", e, exc_info=True)
         return HTTPException(status_code=409, detail="Crawl Request already Exists")
@@ -92,25 +80,23 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
         return HTTPException(status_code=500, detail="Failed to insert crawl request")
 
     logger.info(f"Created crawl request with ID: {crawl_request_mo.id}")
-    logger.info("Sending crawl request to queue")
+    
+    try:  
+      logger.info("Sending crawl request to queue")
 
-    channel = get_mq_channel()
-    crawl_body = crawl_request_mo.model_dump(mode="json")
-    channel.basic_publish(
-      exchange='',
-      routing_key='crawl_requests',
-      body=json.dumps({
+      publisher = BasePublisher("crawl_requests")
+      crawl_body = crawl_request_mo.model_dump(mode="json")
+      publisher.publish("crawl_request", {
         "url": crawl_body["url"],
         "depth": 0
-      }),
-      properties=pika.BasicProperties(
-        delivery_mode=2,
-      )
-    )
+      })
 
-    logger.info(f"Crawl request {crawl_request_mo.id} sent to queue")
+      logger.info(f"Crawl request {crawl_request_mo.id} sent to queue")
+      return crawl_request_mo
+    except Exception as e:
+      logger.error("Failed to publish crawl request: %s", e, exc_info=True)
 
-    return crawl_request_mo
   except Exception as e:
     logger.error("Internal Server Error: %s", e, exc_info=True)
     return HTTPException(status_code=500, detail="Internal Server Error")
+  

@@ -9,7 +9,8 @@ from shared.utils import logger
 from datetime import datetime
 import time
 from shared.database.engine import engine
-from sqlmodel import Session, select, update
+from sqlmodel import Session, select, update, and_
+from typing import Any
 
 class MasterServicer(master_pb2_grpc.MasterServiceServicer):
   @override
@@ -25,29 +26,44 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
         )
         worker = session.exec(select_worker_st).first()
 
+        select_task_st = select(Task).where(
+          (Task.id == task_id) & (Task.worker_id == worker_id)
+        )
+
+        task = session.exec(select_task_st).first()
+
       ALLOWED = {'assigned', 'running', 'failed', 'completed', 'rescheduled', 'cancelled'}
-      if worker is None or request.status not in ALLOWED:
+      if worker is None or request.status not in ALLOWED or task is None:
         return master__pb2.TaskUpdateResponse(acknowledged=False)
       
       now = datetime.now()
 
-      update_data = {
+      update_data: dict[str, Any] = {
         'status': status
       }
+
+      worker_update_data = {}
 
       if status == "running":
         update_data['started_at'] = now
 
       if status in ('completed', 'cancelled'):
+        if status == "completed":
+          worker_update_data['total_tasks_completed'] = worker.total_tasks_completed + 1
+
         update_data['finished_at'] = now
 
-      if worker['status'] == "rescheduled" and status == "running":
-        update_data['retries'] = worker['retries'] + 1
+      if worker.status == "rescheduled" and status == "running":
+        update_data['retries'] = task.retries + 1
 
       with Session(engine) as session:
-        update_worker_st = update(Task).where((Task.id == task_id) & (Task.worker_id == worker_id)).values(
-          **update_data          
+        update_worker_st = update_worker_st = (
+          update(Task)
+          .where(Task.id == task_id) # type: ignore
+          .where(Task.worker_id == worker_id) # type: ignore
+          .values(**update_data)
         )
+
 
         session.exec(update_worker_st)
         session.commit()
@@ -63,7 +79,6 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
     try:
       worker_id = request.worker_id
       status = request.status
-      tasks_completed = request.tasks_completed
       tasks_in_queue = request.tasks_in_queue
 
       with Session(engine) as session:
@@ -75,14 +90,12 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
       if worker == None or status not in ['busy', 'idle', 'shutting_down']:
         return master__pb2.HeartbeatResponse(heartbeat_ack="failed")
       
-      total_tasks_completed = worker.total_tasks_completed + tasks_completed
       now = time.time()
 
       with Session(engine) as session:
-        update_query = update(Worker).where(Worker.id == worker_id).values(
+        update_query = update(Worker).where(Worker.id == worker_id).values( # type: ignore
           status=status,
           last_heartbeat=datetime.fromtimestamp(now),
-          total_tasks_completed=total_tasks_completed,
           tasks_in_queue=tasks_in_queue
         )
 

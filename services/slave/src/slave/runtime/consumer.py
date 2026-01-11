@@ -1,8 +1,17 @@
-# import pika
+import json
+from shared.queue.base_consumer import BaseConsumer
+from shared.utils import logger
+import time
+import asyncio
 
-# from shared.config import AMQP_URL
-
-# def get_mq_connect():
-
-# def start_consume():
-#     channel 
+class WorkerConsumer(BaseConsumer):
+    def on_message(self, ch, method, properties, body):
+        data = json.loads(body)
+        logger.info(f"Received message: {data}")
+        
+        time.sleep(10)
+        return ch.basic_ack(delivery_tag=method.delivery_tag)
+    
+    def start_consume(self, stop_event: asyncio.Event):
+        while not stop_event.is_set():
+            self.start()

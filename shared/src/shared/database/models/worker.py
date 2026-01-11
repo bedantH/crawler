@@ -1,9 +1,10 @@
 from datetime import datetime
 from enum import Enum
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
 from typing import Optional
 from sqlalchemy import Index
 import uuid
+from sqlalchemy.dialects.postgresql import UUID
 
 class WorkerStatus(Enum):
   IDLE = "idle"
@@ -19,12 +20,15 @@ class Worker(SQLModel, table=True):
       Index("idx_worker_last_heartbeat", "last_heartbeat"),
   )
 
-  id: uuid.UUID = Field(primary_key=True)
+  id: uuid.UUID = Field(
+    sa_column=Column(UUID(as_uuid=True), primary_key=True),
+    default_factory=uuid.uuid4
+  )
   hostname: str = Field(nullable=False)
 
   status: WorkerStatus = Field(nullable=False, default=WorkerStatus.IDLE)  # idle, busy, failed, shutting_down
 
-  last_heartbeat: datetime = Field(default_factory=datetime.utcnow)
+  last_heartbeat: datetime = Field(nullable=True, default_factory=datetime.utcnow)
   created_at: datetime = Field(default_factory=datetime.utcnow)
   registered_at: datetime = Field(nullable=False)
 

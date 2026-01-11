@@ -1,0 +1,14 @@
+{
+  "typeCheckingMode": "basic",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        "shared",
+        "services/master",
+        "services/slave",
+        "services/frontier"
+      ]
+    }
+  ]
+}
