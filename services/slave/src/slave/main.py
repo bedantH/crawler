@@ -1,26 +1,34 @@
-import shared.protos.frontier.frontier_pb2 as frontier__pb2
-import shared.protos.frontier.frontier_pb2_grpc as frontier_pb2_grpc
-from slave.config import WORKER_ID
-from slave.runtime.consumer import WorkerConsumer
 import asyncio
-
 import grpc
 from dotenv import load_dotenv
+from slave.config import WORKER_ID
+from slave.runtime.consumer import WorkerConsumer
+from slave.outbound.master_client import MasterClient
+from shared.utils import logger
+
 load_dotenv()
 
-def send_url():
-  with grpc.insecure_channel('localhost:50051') as channel:
-    stub = frontier_pb2_grpc.FrontierServiceStub(channel)
-    request = frontier__pb2.FrontierRequest(url='http://example.com') # type: ignore
-    response = stub.Crawl(request)
+async def heartbeat_loop(stop_event: asyncio.Event):
+    client = MasterClient()
+    logger.info(f"Starting heartbeat loop for worker {WORKER_ID}")
+    while not stop_event.is_set():
+        try:
+            success = client.send_heartbeat(status="idle", tasks_in_queue=0)
+            if success:
+                logger.info(f"Heartbeat sent for {WORKER_ID}")
+            else:
+                logger.warning(f"Heartbeat failed for {WORKER_ID}")
+        except Exception as e:
+            logger.error(f"Error in heartbeat loop: {e}")
+        
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=30)
+        except asyncio.TimeoutError:
+            continue
 
-    print(f'Received response: URL={response.url}, Status={response.status}')
-
-if __name__ == '__main__':
-    # stop_event
-
+async def main():
     stop_event = asyncio.Event()
-
+    
     # Start consuming messages from the queue
     consumer = WorkerConsumer(
         exchange_name=f"worker_{WORKER_ID}",
@@ -28,9 +36,15 @@ if __name__ == '__main__':
         routing_key=f"worker_{WORKER_ID}_task",
     )
 
-    tasks = [
-      consumer.start_consume(stop_event=stop_event),
-    ]
-  
+    logger.info(f"Worker {WORKER_ID} starting...")
+    
+    await asyncio.gather(
+        consumer.start_consume(stop_event=stop_event),
+        heartbeat_loop(stop_event=stop_event)
+    )
 
-
+if __name__ == '__main__':
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass

@@ -9,7 +9,7 @@ class WorkerConsumer(BaseConsumer):
         data = json.loads(body)
         logger.info(f"Received message: {data}")
         
-        time.sleep(10)
+        await asyncio.sleep(10)
         return ch.basic_ack(delivery_tag=method.delivery_tag)
     
     def start_consume(self, stop_event: asyncio.Event):

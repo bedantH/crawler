@@ -12,7 +12,7 @@ message FrontierRequest {
 
 message FrontierResponse {
   string url = 1;
-  string status = 2;
+  int32 depth = 2;
 }
 
 service FrontierService {

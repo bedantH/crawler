@@ -1,18 +1,21 @@
-from sqlmodel import Session
+import json
+import uuid
+from sqlmodel import Session, SQLModel, select
 from shared.database.engine import engine
 from shared.database.models.worker import Worker
 from shared.database.models.task import Task, TaskStatus
 from sqlalchemy import func
 from shared.config import MAX_TASKS_THRESHOLD
-from master.core.worker_manager import worker_manager
+from master.core.worker_manager import WorkerManager
+from shared.utils import logger
 
 class WorkerStatsModel(SQLModel):
     id: uuid.UUID
     task_count: int
 
 class TaskDispatcher():
-    def __init__():
-        worker_manager = WorkerManager()
+    def __init__(self):
+        self.worker_manager = WorkerManager()
 
     def dispatch(self, task_data):
         try:
@@ -27,11 +30,11 @@ class TaskDispatcher():
                 existing_tasks_stat_query = (
                     select(
                         Worker.id,
-                        func.count(func.distinct(Task.id).label("task_count"))
+                        func.count(Task.id).label("task_count")
                     )
                     .select_from(Worker)
-                    .outerjoin(Task)
-                    .group_by(Worker.id, Worker.hostname) # type: ignore
+                    .outerjoin(Task, Task.worker_id == Worker.id)
+                    .group_by(Worker.id)
                 )
 
                 results = session.exec(existing_tasks_stat_query).all()
@@ -57,15 +60,14 @@ class TaskDispatcher():
             with Session(engine) as session:
                 session.add(task)
                 session.commit()
-
-                task.refresh()
+                session.refresh(task)
 
             task_id = task.id
             
-            assignment_status = worker_manager.assign_task_to_worker(task_id=task_id, worker_id=target_worker_id)
+            assignment_status = self.worker_manager.assign_task_to_worker(task_id=task_id, worker_id=target_worker_id)
 
             if not assignment_status:
-                raise Error(f"Failed to assign Task({task_id}) to Worker({target_worker_id})")
+                raise Exception(f"Failed to assign Task({task_id}) to Worker({target_worker_id})")
 
             logger.info(f"Successfully assigned Task({task_id}) to Worker({target_worker_id})")
 

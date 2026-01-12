@@ -5,10 +5,11 @@ from master.core.task_dispatcher import TaskDispatcher
 class MasterConsumer(BaseConsumer):
     def on_message(self, ch, method, properties, body):
         try:
-            data = json.loads(body);
+            import json
+            data = json.loads(body)
 
             dispatcher = TaskDispatcher()
-            dispatcher.disatch(task_data=data)
+            dispatcher.dispatch(task_data=data)
 
             logger.info(f" [x] Received {body}") 
             ch.basic_ack(delivery_tag=method.delivery_tag)
