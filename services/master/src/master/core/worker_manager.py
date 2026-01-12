@@ -35,7 +35,7 @@ class WorkerManager:
                     session.add(worker)
                     session.commit()
 
-                    worker.refresh()
+                    session.refresh(worker)
                 
                 return worker_id
             else:
@@ -66,9 +66,9 @@ class WorkerManager:
                 session.add(task)
                 session.add(worker)
                 session.commit()
-            
-            payload = json.loads(task.payload)
-            
+
+            payload = json.loads(task.payload if task.payload else "{}")
+
             publisher = BasePublisher(f"worker_{worker_id}")
             publisher.publish(f"worker_{worker_id}_task", payload)
 

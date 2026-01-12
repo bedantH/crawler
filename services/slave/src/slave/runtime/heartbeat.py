@@ -1,16 +1,49 @@
+import asyncio
+from slave.config import WORKER_ID
+from slave.outbound.master_client import MasterClient
+from shared.queue.connection import MQConnection
+from shared.utils import logger
 
-"""
-Notes: Heartbeat module will send heartbeat messages to the master service, after a certain interval.
-"""
-
-import master.proto.master_pb2 as master__pb2
-import master.proto.master_pb2_grpc as master_pb2_grpc
-
-class Hearbeat():
+class Heartbeat:
     def __init__(self):
-        pass
-    
-    def send_heartbeat(self):
-        pass
+        self.master_client = MasterClient()
+        self.mq_conn = MQConnection()
+        self.queue_name = f"worker_{WORKER_ID}_queue"
+
+    def get_tasks_in_queue(self):
+        try:
+            with self.mq_conn.channel() as ch:
+                res = ch.queue_declare(queue=self.queue_name, passive=True)
+                return res.method.message_count
+        except Exception as e:
+            logger.debug(f"Queue {self.queue_name} not found or error: {e}")
+            return 0
+
+    async def start_loop(self, stop_event: asyncio.Event):
+        logger.info(f"Starting heartbeat loop for worker {WORKER_ID}")
+        while not stop_event.is_set():
+            try:
+                tasks_in_queue = self.get_tasks_in_queue()
+                # Status can be fetched from some runtime state if needed, for now 'idle' or 'busy'
+                # Simplification: if tasks_in_queue > 0, maybe 'busy'? 
+                # For now, let's just send what was there before or keep it simple.
+                status = "busy" if tasks_in_queue > 0 else "idle"
+                
+                success = self.master_client.send_heartbeat(
+                    status=status,
+                    tasks_in_queue=tasks_in_queue
+                )
+                
+                if success:
+                    logger.info(f"Heartbeat sent for {WORKER_ID} (tasks: {tasks_in_queue})")
+                else:
+                    logger.warning(f"Heartbeat failed for {WORKER_ID}")
+            except Exception as e:
+                logger.error(f"Error in heartbeat loop: {e}")
+
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=30)
+            except asyncio.TimeoutError:
+                continue
 
     

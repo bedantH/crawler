@@ -4,8 +4,8 @@ package master;
 
 message HeartbeatRequest {
   string worker_id = 1;
+  string status = 2;
   int64 tasks_in_queue = 3;
-  string status = 4; // "idle" | "busy" | "failed" | "shutting_down"
 }
 
 message HeartbeatResponse {

@@ -36,7 +36,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
       if worker is None or request.status not in ALLOWED or task is None:
         return master__pb2.TaskUpdateResponse(acknowledged=False)
       
-      now = datetime.now()
+      now = datetime.utcnow()
 
       update_data: dict[str, Any] = {
         'status': status
@@ -90,12 +90,10 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
       if worker == None or status not in ['busy', 'idle', 'shutting_down']:
         return master__pb2.HeartbeatResponse(heartbeat_ack="failed")
       
-      now = time.time()
-
       with Session(engine) as session:
         update_query = update(Worker).where(Worker.id == worker_id).values( # type: ignore
           status=status,
-          last_heartbeat=datetime.fromtimestamp(now),
+          last_heartbeat=datetime.utcnow(),
           tasks_in_queue=tasks_in_queue
         )
 

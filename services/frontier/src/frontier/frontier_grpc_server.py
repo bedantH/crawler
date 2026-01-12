@@ -6,10 +6,10 @@ from concurrent import futures
 
 class CrawlServicer(frontier_pb2_grpc.FrontierServiceServicer):
     @override
-    def Crawl(self, request: frontier__pb2.FrontierRequest, context: grpc.ServicerContext) -> frontier__pb2.FrontierResponse: # pyright: ignore[reportAttributeAccessIssue]
+    def CrawlRequest(self, request: frontier__pb2.FrontierRequest, context: grpc.ServicerContext) -> frontier__pb2.FrontierResponse: # pyright: ignore[reportAttributeAccessIssue]
         # Rest will be handled by the worker master when it reads the crawl request from the queue
-        print(f"Received crawl request for URL: {request.url}")
-        return frontier__pb2.FrontierResponse(url=request.url, status="queued") # type: ignore
+        print(f"Received crawl request for URL: {request.url} and {request.depth} depth")
+        return frontier__pb2.FrontierResponse(status="queued") # type: ignore
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

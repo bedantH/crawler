@@ -19,10 +19,8 @@ class Heartbeat:
     timer.daemon = True
     timer.start()
 
-    logger.info("Heartbeat looping intialized.")
+    logger.info("Heartbeat looping initialized.")
     logger.info("Looking for dead / unresponsive workers")
-
-    serve()
       
   def _monitor_loop(self):
     while self.running:

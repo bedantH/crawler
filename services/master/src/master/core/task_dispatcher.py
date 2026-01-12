@@ -30,11 +30,11 @@ class TaskDispatcher():
                 existing_tasks_stat_query = (
                     select(
                         Worker.id,
-                        func.count(Task.id).label("task_count")
+                        func.count(Task.id).label("task_count") # type: ignore
                     )
                     .select_from(Worker)
-                    .outerjoin(Task, Task.worker_id == Worker.id)
-                    .group_by(Worker.id)
+                    .outerjoin(Task, Task.worker_id == Worker.id) # type: ignore
+                    .group_by(str(Worker.id))
                 )
 
                 results = session.exec(existing_tasks_stat_query).all()

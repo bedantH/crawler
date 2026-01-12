@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cmaster.proto\x12\x06master\"f\n\x10HeartbeatRequest\x12\x11\n\tworker_id\x18\x01 \x01(\t\x12\x17\n\x0ftasks_completed\x18\x02 \x01(\x03\x12\x16\n\x0etasks_in_queue\x18\x03 \x01(\x03\x12\x0e\n\x06status\x18\x04 \x01(\t\"*\n\x11HeartbeatResponse\x12\x15\n\rheartbeat_ack\x18\x01 \x01(\t\"G\n\x11TaskUpdateRequest\x12\x11\n\tworker_id\x18\x01 \x01(\t\x12\x0f\n\x07task_id\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\"*\n\x12TaskUpdateResponse\x12\x14\n\x0c\x61\x63knowledged\x18\x01 \x01(\x08\"(\n\x13WorkerStatusRequest\x12\x11\n\tworker_id\x18\x01 \x01(\t\"\x9f\x01\n\x14WorkerStatusResponse\x12\x11\n\tworker_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x16\n\x0elast_heartbeat\x18\x03 \x01(\x03\x12\x12\n\ncreated_at\x18\x04 \x01(\x03\x12\x1a\n\x12\x63urrent_task_count\x18\x05 \x01(\x05\x12\x1c\n\x14in_progress_task_ids\x18\x06 \x03(\t2\xa2\x01\n\rMasterService\x12I\n\x10ReportTaskUpdate\x12\x19.master.TaskUpdateRequest\x1a\x1a.master.TaskUpdateResponse\x12\x46\n\x0fHandleHeartbeat\x12\x18.master.HeartbeatRequest\x1a\x19.master.HeartbeatResponse2]\n\rWorkerService\x12L\n\x0fGetWorkerStatus\x12\x1b.master.WorkerStatusRequest\x1a\x1c.master.WorkerStatusResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cmaster.proto\x12\x06master\"=\n\x10HeartbeatRequest\x12\x11\n\tworker_id\x18\x01 \x01(\t\x12\x16\n\x0etasks_in_queue\x18\x03 \x01(\x03\"*\n\x11HeartbeatResponse\x12\x15\n\rheartbeat_ack\x18\x01 \x01(\t\"G\n\x11TaskUpdateRequest\x12\x11\n\tworker_id\x18\x01 \x01(\t\x12\x0f\n\x07task_id\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\"*\n\x12TaskUpdateResponse\x12\x14\n\x0c\x61\x63knowledged\x18\x01 \x01(\x08\"(\n\x13WorkerStatusRequest\x12\x11\n\tworker_id\x18\x01 \x01(\t\"\x9f\x01\n\x14WorkerStatusResponse\x12\x11\n\tworker_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x16\n\x0elast_heartbeat\x18\x03 \x01(\x03\x12\x12\n\ncreated_at\x18\x04 \x01(\x03\x12\x1a\n\x12\x63urrent_task_count\x18\x05 \x01(\x05\x12\x1c\n\x14in_progress_task_ids\x18\x06 \x03(\t2\xa2\x01\n\rMasterService\x12I\n\x10ReportTaskUpdate\x12\x19.master.TaskUpdateRequest\x1a\x1a.master.TaskUpdateResponse\x12\x46\n\x0fHandleHeartbeat\x12\x18.master.HeartbeatRequest\x1a\x19.master.HeartbeatResponse2]\n\rWorkerService\x12L\n\x0fGetWorkerStatus\x12\x1b.master.WorkerStatusRequest\x1a\x1c.master.WorkerStatusResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,19 +32,19 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'master_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_HEARTBEATREQUEST']._serialized_start=24
-  _globals['_HEARTBEATREQUEST']._serialized_end=126
-  _globals['_HEARTBEATRESPONSE']._serialized_start=128
-  _globals['_HEARTBEATRESPONSE']._serialized_end=170
-  _globals['_TASKUPDATEREQUEST']._serialized_start=172
-  _globals['_TASKUPDATEREQUEST']._serialized_end=243
-  _globals['_TASKUPDATERESPONSE']._serialized_start=245
-  _globals['_TASKUPDATERESPONSE']._serialized_end=287
-  _globals['_WORKERSTATUSREQUEST']._serialized_start=289
-  _globals['_WORKERSTATUSREQUEST']._serialized_end=329
-  _globals['_WORKERSTATUSRESPONSE']._serialized_start=332
-  _globals['_WORKERSTATUSRESPONSE']._serialized_end=491
-  _globals['_MASTERSERVICE']._serialized_start=494
-  _globals['_MASTERSERVICE']._serialized_end=656
-  _globals['_WORKERSERVICE']._serialized_start=658
-  _globals['_WORKERSERVICE']._serialized_end=751
+  _globals['_HEARTBEATREQUEST']._serialized_end=85
+  _globals['_HEARTBEATRESPONSE']._serialized_start=87
+  _globals['_HEARTBEATRESPONSE']._serialized_end=129
+  _globals['_TASKUPDATEREQUEST']._serialized_start=131
+  _globals['_TASKUPDATEREQUEST']._serialized_end=202
+  _globals['_TASKUPDATERESPONSE']._serialized_start=204
+  _globals['_TASKUPDATERESPONSE']._serialized_end=246
+  _globals['_WORKERSTATUSREQUEST']._serialized_start=248
+  _globals['_WORKERSTATUSREQUEST']._serialized_end=288
+  _globals['_WORKERSTATUSRESPONSE']._serialized_start=291
+  _globals['_WORKERSTATUSRESPONSE']._serialized_end=450
+  _globals['_MASTERSERVICE']._serialized_start=453
+  _globals['_MASTERSERVICE']._serialized_end=615
+  _globals['_WORKERSERVICE']._serialized_start=617
+  _globals['_WORKERSERVICE']._serialized_end=710
 # @@protoc_insertion_point(module_scope)
