@@ -9,7 +9,6 @@ from .dto.crawl import CrawlRequest as CrawlRequestDTO
 from .frontier_grpc_server import serve 
 from contextlib import asynccontextmanager
 from shared.utils import logger
-import asyncio
 
 def start_grpc_server():
   import threading

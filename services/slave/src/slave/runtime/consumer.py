@@ -14,5 +14,4 @@ class WorkerConsumer(BaseConsumer):
     
     async def start_consume(self, stop_event: asyncio.Event):
         loop = asyncio.get_running_loop()
-        while not stop_event.is_set():
-            await loop.run_in_executor(None, self.start)
+        await loop.run_in_executor(None, self.start, stop_event)

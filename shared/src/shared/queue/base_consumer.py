@@ -1,7 +1,8 @@
 import json
+import threading
 from .connection import MQConnection
 from .exchange import Exchange
-
+import asyncio
 class BaseConsumer:
     def __init__(self, exchange_name: str, queue_name: str, routing_key: str, exchange_type='direct', prefetch_count: int = 1):
         self.connection = MQConnection()
@@ -17,7 +18,7 @@ class BaseConsumer:
         print("Received:", message)
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    def start(self):
+    def start(self, stop_event: asyncio.Event):
         with self.connection.channel() as ch:
             exchange = Exchange(ch, self.exchange_name, self.exchange_type)
             exchange.declare()
@@ -29,4 +30,14 @@ class BaseConsumer:
             
             ch.basic_consume(queue=self.queue_name, on_message_callback=self.on_message)
             print(f" [*] Waiting for messages on {self.queue_name}. To exit press CTRL+C")
+
+            def stop_watcher():
+                _ = stop_event.wait()
+                try:
+                    ch.stop_consuming()
+                except Exception:
+                    pass
+            
+            threading.Thread(target=stop_watcher, daemon=True).start()
+
             ch.start_consuming()

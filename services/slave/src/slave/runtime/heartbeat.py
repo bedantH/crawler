@@ -24,9 +24,7 @@ class Heartbeat:
         while not stop_event.is_set():
             try:
                 tasks_in_queue = self.get_tasks_in_queue()
-                # Status can be fetched from some runtime state if needed, for now 'idle' or 'busy'
-                # Simplification: if tasks_in_queue > 0, maybe 'busy'? 
-                # For now, let's just send what was there before or keep it simple.
+                
                 status = "busy" if tasks_in_queue > 0 else "idle"
                 
                 success = self.master_client.send_heartbeat(
