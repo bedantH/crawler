@@ -1,6 +1,6 @@
 import json
 import uuid
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import SQLModel, select
 from shared.database.engine import engine
 from shared.database.models.worker import Worker
 from shared.database.models.task import Task, TaskStatus
@@ -8,6 +8,7 @@ from sqlalchemy import func
 from shared.config import MAX_TASKS_THRESHOLD
 from master.core.worker_manager import WorkerManager
 from shared.utils import logger
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 class WorkerStatsModel(SQLModel):
     id: uuid.UUID
@@ -17,16 +18,11 @@ class TaskDispatcher():
     def __init__(self):
         self.worker_manager = WorkerManager()
 
-    def dispatch(self, task_data):
+    async def dispatch(self, task_data):
         try:
-            """
-                Task Dispatcher:
-                    task_data = { url: str, depth: int }
-            """
-
             target_worker_id = None
 
-            with Session(engine) as session:
+            async with AsyncSession(engine) as session:
                 existing_tasks_stat_query = (
                     select(
                         Worker.id,
@@ -37,7 +33,7 @@ class TaskDispatcher():
                     .group_by(str(Worker.id))
                 )
 
-                results = session.exec(existing_tasks_stat_query).all()
+                results = (await session.exec(existing_tasks_stat_query)).all()
                 all_workers = [
                     WorkerStatsModel(id=row[0], task_count=row[1])
                     for row in results
@@ -57,10 +53,10 @@ class TaskDispatcher():
                 payload=json.dumps(task_data),
             )
 
-            with Session(engine) as session:
+            async with AsyncSession(engine) as session:
                 session.add(task)
-                session.commit()
-                session.refresh(task)
+                await session.commit()
+                await session.refresh(task)
 
             task_id = task.id
             

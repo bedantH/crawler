@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, Request
-from sqlmodel import Session, select
+from sqlmodel import select
 from sqlalchemy import exc
 from shared.database.models.crawl_requests import CrawlRequest, CrawlStatus
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from shared.database.engine import engine
 from shared.queue.base_publisher import BasePublisher
@@ -44,10 +45,10 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
     max_pages = crawl_request.max_pages
     
     # find crawl request by url
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
       try:
         select_crawl_req_query = select(CrawlRequest).where(CrawlRequest.url == url)
-        existing_crawl_request = session.exec(select_crawl_req_query).one()
+        existing_crawl_request = (await session.exec(select_crawl_req_query)).one()
       except exc.NoResultFound:
         existing_crawl_request = None
 
@@ -64,12 +65,12 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
       status=CrawlStatus.PENDING
     )
 
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
       try:
         session.add(crawl_request_mo)
-        session.commit()
+        await session.commit()
         # refresh crawl_request_mo to get id later
-        session.refresh(crawl_request_mo)
+        await session.refresh(crawl_request_mo)
 
       except exc.DuplicateColumnError as e:
         logger.error("Duplicate Column: %s", e, exc_info=True)
@@ -85,7 +86,8 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
 
       publisher = BasePublisher("crawl_requests")
       crawl_body = crawl_request_mo.model_dump(mode="json")
-      publisher.publish("crawl_request", {
+      
+      await publisher.publish("crawl_request", {
         "url": crawl_body["url"],
         "depth": 0
       })

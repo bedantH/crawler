@@ -1,41 +1,39 @@
-import pika
+import asyncio
+from contextlib import asynccontextmanager
 from shared.config import AMQP_URL
-import threading
-from contextlib import contextmanager
+import aio_pika
 
 class MQConnection:
     _connection = None
-    _lock = threading.Lock()
+    _lock = asyncio.Lock()
 
     def __init__(self):
         self.url = AMQP_URL
 
-    def connect(self):
-        """Establish a new connection if not exists."""
-        with self._lock:
+    async def connect(self):
+        async with self._lock:
             if not MQConnection._connection or MQConnection._connection.is_closed:
-                params = pika.URLParameters(self.url)
-                MQConnection._connection = pika.BlockingConnection(params)
+                MQConnection._connection = await aio_pika.connect_robust(self.url)
         return MQConnection._connection
 
-    @contextmanager
-    def channel(self):
-        """Provide a channel and close it automatically."""
-        connection = self.connect()
-        ch = connection.channel()
+    @asynccontextmanager
+    async def channel(self):
+        connection = await self.connect()
+        ch = await connection.channel()
+        
         try:
             yield ch
         finally:
-            if ch.is_open:
-                ch.close()
+            if ch.closed is False:
+                await ch.close()
 
-    def close(self):
+    async def close(self):
         # close the connection and any channels here
         if MQConnection._connection:
             if not MQConnection._connection.is_closed:
-                MQConnection._connection.close()
+                await MQConnection._connection.close()
             MQConnection._connection = None
 
-    def get_channel(self):
-        connection = self.connect()
-        return connection.channel()
+    async def get_channel(self):
+        connection = await self.connect()
+        return await connection.channel()

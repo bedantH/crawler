@@ -22,7 +22,7 @@ def poll_running_status(container, timeout: int = 10) -> bool:
 
     return False
 
-def create_worker_container(worker_id: str) -> bool:
+async def create_worker_container(worker_id: str) -> bool:
     client = None
     container = None
 
@@ -47,8 +47,8 @@ def create_worker_container(worker_id: str) -> bool:
             return False
 
         try:
-            with MQConnection().channel() as channel:
-                channel.queue_declare(queue=f"{worker_id}-queue", durable=True)
+            async with MQConnection().channel() as channel:
+                await channel.declare_queue(f"{worker_id}-queue", durable=True)
         except Exception as e:
             logger.error("Failed to declare queue for worker %s: %s", worker_id, e, exc_info=True)
             try:

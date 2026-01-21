@@ -1,25 +1,21 @@
+import asyncio
 from shared.database.models.worker import WorkerStatus
-from slave.runtime.consumer import WorkerConsumer
-
-# Represents a worker entity in the slave service
-# One instance per worker process, in future workers mapped to threads it will be easier to manage
+from slave.entities.task import Task
 
 class Worker:
-    def __init__(self, worker_id: str):
-        self.worker_id: str = worker_id
-        self.status: WorkerStatus = WorkerStatus.IDLE
-        self.total_tasks_completed: int = 0
-        self.task_in_progress: dict | None = None
-        self.consumer: WorkerConsumer | None = None
+    def __init__(self, worker_id: str | None = None):
+        self.worker_id = worker_id
+        self.status = WorkerStatus.IDLE
 
-    def update_status(self, status: WorkerStatus):
-        self.status = status
+        self.parser_queue = asyncio.Queue(maxsize=30)
+        self.extractor_queue = asyncio.Queue(maxsize=30)
+        self.indexer_queue = asyncio.Queue(maxsize=30)
 
-    def invoke_shutdown(self):
-        """
-            Logic to gracefully shutdown the worker, ensuring current tasks are completed or rescheduled.
-        """
-        pass
+    async def send_to_parser(self, task: Task):
+        await self.parser_queue.put(task)
 
-    def cleanup(self):
-        self.task_in_progress = None
+    async def send_to_extractor(self, task: Task):
+        await self.extractor_queue.put(task)
+
+    async def send_to_indexer(self, task: Task):
+        await self.indexer_queue.put(task)

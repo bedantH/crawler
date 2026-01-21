@@ -1,8 +1,8 @@
+import asyncio
 import json
-import threading
 from .connection import MQConnection
 from .exchange import Exchange
-import asyncio
+
 class BaseConsumer:
     def __init__(self, exchange_name: str, queue_name: str, routing_key: str, exchange_type='direct', prefetch_count: int = 1):
         self.connection = MQConnection()
@@ -12,32 +12,27 @@ class BaseConsumer:
         self.exchange_type = exchange_type
         self.prefetch_count = prefetch_count
 
-    def on_message(self, ch, method, properties, body):
-        """Override this method in subclasses"""
-        message = json.loads(body)
-        print("Received:", message)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+    async def on_message(self, message):
+        async with message.process():
+            body = message.body
+            payload = json.loads(body)
+            print("Received:", payload)
 
-    def start(self, stop_event: asyncio.Event):
-        with self.connection.channel() as ch:
+    async def start(self, stop_event: asyncio.Event):
+        async with self.connection.channel() as ch:
+            await ch.set_qos(prefetch_count=self.prefetch_count)
+
             exchange = Exchange(ch, self.exchange_name, self.exchange_type)
-            exchange.declare()
-            
-            ch.queue_declare(queue=self.queue_name, durable=True)
-            ch.queue_bind(exchange=self.exchange_name, queue=self.queue_name, routing_key=self.routing_key)
+            abs_exchange = await exchange.declare()
 
-            ch.basic_qos(prefetch_count=self.prefetch_count)
-            
-            ch.basic_consume(queue=self.queue_name, on_message_callback=self.on_message)
+            queue = await ch.declare_queue(self.queue_name, durable=True)
+            await queue.bind(exchange=abs_exchange, routing_key=self.routing_key)
+
             print(f" [*] Waiting for messages on {self.queue_name}. To exit press CTRL+C")
 
-            def stop_watcher():
-                _ = stop_event.wait()
-                try:
-                    ch.stop_consuming()
-                except Exception:
-                    pass
-            
-            threading.Thread(target=stop_watcher, daemon=True).start()
+            consumer_tag = await queue.consume(self.on_message)
 
-            ch.start_consuming()
+            try:
+                await stop_event.wait()
+            finally:
+                await queue.cancel(consumer_tag)            
