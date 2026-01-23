@@ -57,6 +57,56 @@ services:
     networks:
       - app-network
 
+  frontier:
+    build:
+      context: .
+      dockerfile: services/frontier/Dockerfile
+    container_name: frontier
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/crawler
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
+      - DATABASE_URL=postgresql+psycopg2://master:masterpass@postgres:5432/crawler
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      postgres:
+        condition: service_started
+    networks:
+      - app-network
+
+  master:
+    build:
+      context: .
+      dockerfile: services/master/Dockerfile
+    container_name: master
+    environment:
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
+      - DATABASE_URL=postgresql+psycopg2://master:masterpass@postgres:5432/crawler
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      rabbitmq:
+        condition: service_started
+      postgres:
+        condition: service_started
+    networks:
+      - app-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: services/slave/Dockerfile
+    image: worker:latest
+    profiles:
+      - donotstart
+    networks:
+      - app-network
+
 volumes:
   data:
     driver: local

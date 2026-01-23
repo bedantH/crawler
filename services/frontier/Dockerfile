@@ -4,24 +4,30 @@ FROM python:3.13-slim AS base
 # Set the working directory
 WORKDIR /app
 
-# Copy project metadata (for uv)
-COPY pyproject.toml uv.lock* ./
-
 # Install uv
 RUN pip install uv
 
-# Sync only this package's dependencies
-RUN uv sync --package . --no-workspace
+# Copy project metadata
+COPY pyproject.toml uv.lock ./
+COPY services/frontier/pyproject.toml ./services/frontier/
+COPY shared/pyproject.toml ./shared/
+
+# Install dependencies for the workspace
+# Note: we need to copy enough for uv to resolve workspace members
+RUN uv sync --package frontier --no-dev --no-editable
 
 # Copy the service source and shared library
-COPY src/ ./src/
-COPY ../../shared/ ./shared/
+COPY services/frontier/src/ ./services/frontier/src/
+COPY shared/src/ ./shared/src/
+
+# Sync again to ensure everything is in place
+RUN uv sync --package frontier --no-dev --no-editable
 
 # Set Python path to find both service and shared modules
-ENV PYTHONPATH=/app/src:/app/shared/src
+ENV PYTHONPATH=/app/services/frontier/src:/app/shared/src
 
 # Expose app port
 EXPOSE 8080
 
 # Default command to run your FastAPI app
-CMD ["uv", "run", "-p", ".", "uvicorn", "frontier.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+CMD ["uv", "run", "--package", "frontier", "uvicorn", "frontier.main:app", "--host", "0.0.0.0", "--port", "8080"]
