@@ -6,7 +6,8 @@ class Worker:
     def __init__(self, worker_id: str | None = None):
         self.worker_id = worker_id
         self.status = WorkerStatus.IDLE
-
+        
+        self.fetch_queue = asyncio.Queue(maxsize=30)
         self.parser_queue = asyncio.Queue(maxsize=30)
         self.extractor_queue = asyncio.Queue(maxsize=30)
         self.indexer_queue = asyncio.Queue(maxsize=30)

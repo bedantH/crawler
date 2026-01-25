@@ -5,8 +5,9 @@ from typing import Any, Optional
 @dataclass
 class ParsedHTML:
     title: str
+    description: Optional[str]
     body: str
-    raw_html: str
+    headings: list[str]
 
 @dataclass
 class ExtractedData:
@@ -19,5 +20,6 @@ class Task:
     url: str
     message: aio_pika.IncomingMessage
 
+    raw_html: Optional[str] = None
     parsed: Optional[ParsedHTML] = None
     extracted: Optional[ExtractedData] = None
