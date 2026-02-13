@@ -3,7 +3,7 @@ syntax = "proto3";
 package shared.protos.frontier;
 
 message FrontierRequest {
-  string url = 1;
+  repeated string url = 1;
   int32 depth = 2;
 }
 

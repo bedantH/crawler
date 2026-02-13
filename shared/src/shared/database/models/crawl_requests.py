@@ -18,7 +18,7 @@ class CrawlRequest(SQLModel, table=True):
 
   id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
   url: str = Field(nullable=False, unique=True, index=True)
-  depth: int = Field(default=1, ge=1, le=10)
+  max_depth: int = Field(default=1, ge=1, le=10)
   max_pages: int = Field(default=50, ge=1, le=100)
   status: CrawlStatus = Field(default=CrawlStatus.PENDING, nullable=False, index=True)
 

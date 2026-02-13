@@ -19,6 +19,7 @@ class Task:
     depth: int
     url: str
     message: aio_pika.IncomingMessage
+    document_id: Optional[str] = None
 
     raw_html: Optional[str] = None
     parsed: Optional[ParsedHTML] = None

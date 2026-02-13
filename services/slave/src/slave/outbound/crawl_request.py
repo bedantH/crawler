@@ -12,7 +12,7 @@ class FrontierClient():
     self.channel = grpc.insecure_channel(f"{self.frontier_host}:{self.frontier_port}")
     self.stub = FrontierServiceStub(self.channel)
 
-  def send_crawl_request(self, url: str, depth: int):
+  def send_crawl_request(self, url: list[str], depth: int):
     try:
       request = frontier_pb2.FrontierRequest(
         url=url,

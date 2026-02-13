@@ -6,9 +6,9 @@ from shared.utils import logger
 from slave.entities.task import Task
 
 class WorkerConsumer(BaseConsumer):
-    def __init__(self, exchange_name, queue_name, routing_key, extractor_queue: asyncio.Queue):
+    def __init__(self, exchange_name, queue_name, routing_key, fetcher_queue: asyncio.Queue):
         super().__init__(exchange_name, queue_name, routing_key)
-        self.extractor_queue = extractor_queue
+        self.fetcher_queue = fetcher_queue
 
     async def on_message(self, message: aio_pika.IncomingMessage):
         data = json.loads(message.body)
@@ -20,6 +20,6 @@ class WorkerConsumer(BaseConsumer):
             message=message
         )
 
-        await self.extractor_queue.put(task)
+        await self.fetcher_queue.put(task)
         
         return await message.ack()

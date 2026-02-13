@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x66rontier.proto\x12\x16shared.protos.frontier\"-\n\x0f\x46rontierRequest\x12\x0b\n\x03url\x18\x01 \x01(\t\x12\r\n\x05\x64\x65pth\x18\x02 \x01(\x05\"\"\n\x10\x46rontierResponse\x12\x0e\n\x06status\x18\x01 \x01(\t2t\n\x0f\x46rontierService\x12\x61\n\x0c\x43rawlRequest\x12\'.shared.protos.frontier.FrontierRequest\x1a(.shared.protos.frontier.FrontierResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x66rontier.proto\x12\x16shared.protos.frontier\"-\n\x0f\x46rontierRequest\x12\x0b\n\x03url\x18\x01 \x03(\t\x12\r\n\x05\x64\x65pth\x18\x02 \x01(\x05\"\"\n\x10\x46rontierResponse\x12\x0e\n\x06status\x18\x01 \x01(\t2t\n\x0f\x46rontierService\x12\x61\n\x0c\x43rawlRequest\x12\'.shared.protos.frontier.FrontierRequest\x1a(.shared.protos.frontier.FrontierResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)

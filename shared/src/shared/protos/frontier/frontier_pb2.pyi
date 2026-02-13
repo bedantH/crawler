@@ -1,5 +1,7 @@
+from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
+from collections.abc import Iterable as _Iterable
 from typing import ClassVar as _ClassVar, Optional as _Optional
 
 DESCRIPTOR: _descriptor.FileDescriptor
@@ -8,9 +10,9 @@ class FrontierRequest(_message.Message):
     __slots__ = ("url", "depth")
     URL_FIELD_NUMBER: _ClassVar[int]
     DEPTH_FIELD_NUMBER: _ClassVar[int]
-    url: str
+    url: _containers.RepeatedScalarFieldContainer[str]
     depth: int
-    def __init__(self, url: _Optional[str] = ..., depth: _Optional[int] = ...) -> None: ...
+    def __init__(self, url: _Optional[_Iterable[str]] = ..., depth: _Optional[int] = ...) -> None: ...
 
 class FrontierResponse(_message.Message):
     __slots__ = ("status",)

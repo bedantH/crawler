@@ -6,7 +6,6 @@ from slave.runtime.consumer import WorkerConsumer
 from slave.runtime.heartbeat import Heartbeat
 from shared.utils import logger
 from slave.entities.worker import Worker
-from slave.consumers.extractor import extractor_worker
 from slave.consumers.parser import parser_worker
 from slave.consumers.indexer import indexer_worker
 from slave.consumers.fetcher import fetch_worker
@@ -24,7 +23,7 @@ async def main():
         exchange_name=f"worker_{WORKER_ID}",
         queue_name=f"worker_{WORKER_ID}_queue",
         routing_key=f"worker_{WORKER_ID}_task",
-        extractor_queue=worker.extractor_queue
+        fetcher_queue=worker.fetch_queue
     )
 
     heartbeat = Heartbeat(worker_id=worker.worker_id)
@@ -41,7 +40,6 @@ async def main():
 
         # queue workers
         fetch_worker(worker, stop_event),
-        extractor_worker(worker, stop_event),
         parser_worker(worker, stop_event),
         indexer_worker(worker, stop_event)
     )

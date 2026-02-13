@@ -32,7 +32,7 @@ class Task(SQLModel, table=True):
   )
 
   payload: Optional[str] = Field(nullable=True)
-  status: TaskStatus = Field(nullable=False, default_factory=TaskStatus.PENDING) # Pending, Assigned, Running, Completed, Failed, Rescheduled, Cancelled
+  status: TaskStatus = Field(nullable=False, default=TaskStatus.PENDING) # Pending, Assigned, Running, Completed, Failed, Rescheduled, Cancelled
   retries: int = Field(default=0, nullable=False)
 
   created_at: datetime = Field(default_factory=datetime.utcnow)

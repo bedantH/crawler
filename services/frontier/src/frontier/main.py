@@ -60,7 +60,7 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
     # create crawl request
     crawl_request_mo = CrawlRequest(
       url=url,
-      depth=depth,
+      max_depth=depth,
       max_pages=max_pages,
       status=CrawlStatus.PENDING
     )
