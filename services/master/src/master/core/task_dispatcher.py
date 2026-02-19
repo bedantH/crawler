@@ -18,10 +18,9 @@ class TaskDispatcher():
     def __init__(self):
         self.worker_manager = WorkerManager()
 
-    async def dispatch(self, task_data):
+    async def get_available_worker(self) -> str:
+        target_worker_id = None
         try:
-            target_worker_id = None
-
             async with AsyncSession(engine) as session:
                 existing_tasks_stat_query = (
                     select(
@@ -38,16 +37,39 @@ class TaskDispatcher():
                     WorkerStatsModel(id=row[0], task_count=row[1])
                     for row in results
                 ]
+
+                if len(all_workers) == 0 or all(worker.task_count == MAX_TASKS_THRESHOLD for worker in all_workers):
+                    target_worker_id = self.worker_manager.create_worker() # starts a new worker container and creates respective queues for it
+                else:
+                    least_task_worker = all_workers[0]
+                    for worker in all_workers:
+                        if worker.task_count < least_task_worker.task_count:
+                            least_task_worker = worker
+                    
+                    target_worker_id = least_task_worker.id
             
-            if len(all_workers) == 0 or all(worker.task_count == MAX_TASKS_THRESHOLD for worker in all_workers):
-                target_worker_id = self.worker_manager.create_worker() # starts a new worker container and creates respective queues for it
-            else:
-                least_task_worker = all_workers[0]
-                for worker in all_workers:
-                    if worker.task_count < least_task_worker.task_count:
-                        least_task_worker = worker
-                
-                target_worker_id = least_task_worker.id
+            return str(target_worker_id)
+        except Exception as e:
+            logger.error("Error getting the available worker: %s", e)
+            raise
+
+    async def dispatch_by_task_id(self, task_id):
+        try:
+            target_worker_id = await self.get_available_worker()
+            
+            assignment_status = self.worker_manager.assign_task_to_worker(task_id=task_id, worker_id=target_worker_id)
+            if not assignment_status:
+                raise Exception(f"Failed to assign Task({task_id}) to Worker({target_worker_id})")
+
+            logger.info(f"Successfully assigned Task({task_id}) to Worker({target_worker_id})")
+
+        except Exception as e:
+            logger.error("Error occurred when dispatching a task: %s", e)
+            raise
+
+    async def dispatch(self, task_data):
+        try:
+            target_worker_id = await self.get_available_worker()
 
             task = Task(
                 payload=json.dumps(task_data),

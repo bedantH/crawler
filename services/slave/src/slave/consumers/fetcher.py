@@ -10,6 +10,11 @@ async def fetch_worker(worker: Worker, stop_event: asyncio.Event):
         except asyncio.TimeoutError:
             continue
 
+        worker.master_client.report_task_update(
+            task_id=task.task_id,
+            status="running"
+        )
+
         try:
             url = task.url
             async with aiohttp.ClientSession() as session:
@@ -20,5 +25,10 @@ async def fetch_worker(worker: Worker, stop_event: asyncio.Event):
             await worker.send_to_parser(task)
         except Exception as e:
             print(f"Fetch failed for task {task}: {e}")
+            worker.master_client.report_task_update(
+                task_id=task.task_id,
+                status="failed"
+            )
+            task.message.nack(requeue=False)
         finally:
             worker.fetch_queue.task_done()

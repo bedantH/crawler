@@ -9,24 +9,28 @@ from slave.entities.worker import Worker
 from slave.consumers.parser import parser_worker
 from slave.consumers.indexer import indexer_worker
 from slave.consumers.fetcher import fetch_worker
+from services.slave.src.slave.outbound.master_client import MasterClient
 
 load_dotenv()
 
 async def main():
     stop_event = asyncio.Event()
+    master_client = MasterClient()
     
     worker = Worker(
-        worker_id=WORKER_ID
+        worker_id=WORKER_ID,
+        master_client=master_client
     )
 
     consumer = WorkerConsumer(
+        worker=worker,
         exchange_name=f"worker_{WORKER_ID}",
         queue_name=f"worker_{WORKER_ID}_queue",
         routing_key=f"worker_{WORKER_ID}_task",
         fetcher_queue=worker.fetch_queue
     )
 
-    heartbeat = Heartbeat(worker_id=worker.worker_id)
+    heartbeat = Heartbeat(master_client=worker.master_client, worker_id=worker.worker_id)
 
     logger.info(f"Worker {WORKER_ID} starting...")
         

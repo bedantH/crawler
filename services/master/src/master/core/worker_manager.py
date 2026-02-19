@@ -65,12 +65,17 @@ class WorkerManager:
 
                 session.add(task)
                 session.add(worker)
-                await session.commit()
 
-            payload = json.loads(task.payload if task.payload else "{}")
+                await session.commit()
+                await session.refresh(task)
+
+            payload = json.loads(str(task.payload))
 
             publisher = BasePublisher(f"worker_{worker_id}")
-            await publisher.publish(f"worker_{worker_id}_task", payload)
+            await publisher.publish(f"worker_{worker_id}_task", {
+                **payload,
+                task_id: task_id
+            })
 
             logger.info(f"Task({task_id}) pushed to worker's queue")
 

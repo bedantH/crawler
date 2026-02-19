@@ -16,6 +16,7 @@ class ExtractedData:
 
 @dataclass
 class Task:
+    task_id: str
     depth: int
     url: str
     message: aio_pika.IncomingMessage

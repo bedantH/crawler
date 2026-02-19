@@ -1,22 +1,6 @@
 version: "3.9"
 
-services:
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - data:/data/db
-    restart: always
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-          
+services:          
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq

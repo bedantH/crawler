@@ -4,8 +4,8 @@ from shared.queue.connection import MQConnection
 from shared.utils import logger
 
 class Heartbeat:
-    def __init__(self, worker_id: str | None = None):
-        self.master_client = MasterClient()
+    def __init__(self, master_client: MasterClient, worker_id: str | None = None):
+        self.master_client = master_client
         self.mq_conn = MQConnection()
         self.worker_id = worker_id
         self.queue_name = f"worker_{worker_id}_queue"

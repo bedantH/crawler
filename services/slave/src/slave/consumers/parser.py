@@ -7,6 +7,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from shared.database.engine import engine
 from shared.database.models.document import Document
 from slave.outbound.crawl_request import FrontierClient
+from slave.outbound.master_client import MasterClient
 
 def parse_html(raw_html):
     soup = BeautifulSoup(raw_html, 'html.parser')
@@ -152,6 +153,14 @@ async def parser_worker(worker: Worker, stop_event: asyncio.Event):
                 depth=task.depth
             )
 
+            # update the master about the task update
+            worker.master_client.report_task_update(
+                task_id=task.task_id,
+                status="completed"
+            )
+
+            task.message.ack()
+
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=0.5)
                 break
@@ -159,6 +168,13 @@ async def parser_worker(worker: Worker, stop_event: asyncio.Event):
                 pass
         except Exception as e:
             logger.error(f"Parser failed for task {task}: {e}")
+            worker.master_client.report_task_update(
+                task_id=task.task_id,
+                status="failed"
+            )
+            
+            task.message.nack(requeue=False)
         finally:
             worker.parser_queue.task_done()
+
     logger.info("Parser worker shutting down")

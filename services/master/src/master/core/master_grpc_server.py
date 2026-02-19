@@ -1,12 +1,16 @@
+import json
 import asyncio
 import grpc
 import master.proto.master_pb2 as master__pb2
 import master.proto.master_pb2_grpc as master_pb2_grpc
-from shared.database.models.worker import Worker
+from shared.database.models.worker import WorkerStatus, Worker
 from shared.database.models.task import Task
 from typing import override
 from shared.utils import logger
 from datetime import datetime
+from master.core.worker_manager import WorkerManager
+from master.core.task_dispatcher import TaskDispatcher
+from master.infra.dead_letter import push_to_deadletter
 
 from shared.database.engine import engine
 from sqlmodel import select, update, and_
@@ -15,6 +19,7 @@ from typing import Any
 
 class MasterServicer(master_pb2_grpc.MasterServiceServicer):
   def __init__(self):
+    self.worker_manager = WorkerManager()
     self._semaphore = asyncio.Semaphore(10)
 
   @override
@@ -27,7 +32,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
 
         async with AsyncSession(engine) as session:
           select_worker_st = select(Worker).where(
-            (Worker.id == worker_id) & (Worker.status != 'failed')
+            (Worker.id == worker_id) & (Worker.status != WorkerStatus.STOPPED)
           )
           worker = (await session.exec(select_worker_st)).first()
 
@@ -37,8 +42,20 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
 
           task = (await session.exec(select_task_st)).first()
 
-        ALLOWED = {'assigned', 'running', 'failed', 'completed', 'rescheduled', 'cancelled'}
-        if worker is None or request.status not in ALLOWED or task is None:
+        ALLOWED = {'assigned', 'running', 'failed', 'completed'}
+
+        # Either worker was stopped abruptly ?, or maybe some bug, so we attempt to destroy that worker, and send this task to some other worker
+        if worker is None:
+          # kill_worker
+          await self.worker_manager.kill_worker(worker_id=worker_id)
+          
+          task_dispatcher = TaskDispatcher()
+          # find another worker for this task
+          await task_dispatcher.dispatch_by_task_id(task_id=task_id)
+
+          return master__pb2.TaskUpdateResponse(acknowledged=True)
+
+        if request.status not in ALLOWED or task is None:
           return master__pb2.TaskUpdateResponse(acknowledged=False)
         
         now = datetime.utcnow()
@@ -51,15 +68,23 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
 
         if status == "running":
           update_data['started_at'] = now
-
-        if status in ('completed', 'cancelled'):
-          if status == "completed":
+      
+        if status == "completed":
             worker_update_data['total_tasks_completed'] = worker.total_tasks_completed + 1
+            update_data['finished_at'] = now
 
-          update_data['finished_at'] = now
-
-        if worker.status == "rescheduled" and status == "running":
-          update_data['retries'] = task.retries + 1
+        if status == "failed":
+          if task.retries < 3:
+            update_data['retries'] = task.retries + 1
+            
+            task_dispatcher = TaskDispatcher()
+            # find another worker for this task and put it in their queue
+            await task_dispatcher.dispatch_by_task_id(task_id=task_id)
+          
+          else:
+            # push the task to the deadletter queue and update the status to cancelled
+            await push_to_deadletter(task_id=str(task.id), task_data=json.loads(str(task.payload)))
+            update_data["status"] = "cancelled"
 
         async with AsyncSession(engine) as session:
           update_worker_st = (
