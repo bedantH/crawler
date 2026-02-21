@@ -140,6 +140,7 @@ async def parser_worker(worker: Worker, stop_event: asyncio.Event):
                 links=extracted_data.links,
                 meta_info=extracted_data.metadata,
                 text=parsed_data.body,
+                crawl_id=task.crawl_id,
             )
 
             # send update to database to create the document
@@ -153,7 +154,7 @@ async def parser_worker(worker: Worker, stop_event: asyncio.Event):
             # send the links
             frontier_client = FrontierClient()
             frontier_client.send_crawl_request(
-                url=extracted_data.links, depth=task.depth
+                url=extracted_data.links, depth=task.depth, crawl_id=task.crawl_id
             )
 
             # update the master about the task update

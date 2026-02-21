@@ -10,6 +10,8 @@ class Document(SQLModel, table=True):
         default_factory=uuid4
     )
 
+    crawl_id: str = Field(nullable=False)
+
     # maps to the meta description, empty by default
     description: Optional[str] = Field(default="")
     

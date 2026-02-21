@@ -36,6 +36,11 @@ class CrawlServicer(frontier_pb2_grpc.FrontierServiceServicer):
         if crawl_request == None:
             logger.error("Crawl Request Not Found")
             return frontier__pb2.FrontierResponse(status="failed")
+        
+        # Check against maximum depth specified by the user
+        if depth >= crawl_request.max_depth:
+            logger.info("Maximum crawl depth reached for %s. Skipping %s discovered URLs.", crawl_id, len(urls))
+            return frontier__pb2.FrontierResponse(status="skipped")
 
         robots = crawl_request.robots
         rp = RobotsParser(robots=robots)
@@ -57,12 +62,12 @@ class CrawlServicer(frontier_pb2_grpc.FrontierServiceServicer):
             client = RedisClient(host=REDIS_HOST)
 
             for url in allowed_urls:
-                if client.ismember(url):
+                if client.get(url) == None:
                     await publisher.publish("crawl_request", {
                         "crawl_id": str(crawl_request.id),
                         "base_url": crawl_request.base_url,
                         "url": url,
-                        "depth": depth # incoming depth
+                        "depth": depth + 1 # increment depth for child links
                     })
 
             print(f"Received crawl request for URL: {request.url} and {request.depth} depth")
