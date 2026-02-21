@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x66rontier.proto\x12\x16shared.protos.frontier\"-\n\x0f\x46rontierRequest\x12\x0b\n\x03url\x18\x01 \x03(\t\x12\r\n\x05\x64\x65pth\x18\x02 \x01(\x05\"\"\n\x10\x46rontierResponse\x12\x0e\n\x06status\x18\x01 \x01(\t2t\n\x0f\x46rontierService\x12\x61\n\x0c\x43rawlRequest\x12\'.shared.protos.frontier.FrontierRequest\x1a(.shared.protos.frontier.FrontierResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x66rontier.proto\x12\x16shared.protos.frontier\"?\n\x0f\x46rontierRequest\x12\x0b\n\x03url\x18\x01 \x03(\t\x12\r\n\x05\x64\x65pth\x18\x02 \x01(\x05\x12\x10\n\x08\x63rawl_id\x18\x03 \x01(\t\"\"\n\x10\x46rontierResponse\x12\x0e\n\x06status\x18\x01 \x01(\t2t\n\x0f\x46rontierService\x12\x61\n\x0c\x43rawlRequest\x12\'.shared.protos.frontier.FrontierRequest\x1a(.shared.protos.frontier.FrontierResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,9 +32,9 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'frontier_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_FRONTIERREQUEST']._serialized_start=42
-  _globals['_FRONTIERREQUEST']._serialized_end=87
-  _globals['_FRONTIERRESPONSE']._serialized_start=89
-  _globals['_FRONTIERRESPONSE']._serialized_end=123
-  _globals['_FRONTIERSERVICE']._serialized_start=125
-  _globals['_FRONTIERSERVICE']._serialized_end=241
+  _globals['_FRONTIERREQUEST']._serialized_end=105
+  _globals['_FRONTIERRESPONSE']._serialized_start=107
+  _globals['_FRONTIERRESPONSE']._serialized_end=141
+  _globals['_FRONTIERSERVICE']._serialized_start=143
+  _globals['_FRONTIERSERVICE']._serialized_end=259
 # @@protoc_insertion_point(module_scope)

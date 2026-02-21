@@ -3,6 +3,7 @@ from sqlmodel import select
 from sqlalchemy import exc
 from shared.database.models.crawl_requests import CrawlRequest, CrawlStatus
 from sqlmodel.ext.asyncio.session import AsyncSession
+import requests
 
 from shared.database.engine import engine
 from shared.queue.base_publisher import BasePublisher
@@ -10,6 +11,7 @@ from .dto.crawl import CrawlRequest as CrawlRequestDTO
 from .frontier_grpc_server import serve 
 from contextlib import asynccontextmanager
 from shared.utils import logger
+from urllib.parse import urlparse
 
 def start_grpc_server():
   import threading
@@ -47,7 +49,7 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
     # find crawl request by url
     async with AsyncSession(engine) as session:
       try:
-        select_crawl_req_query = select(CrawlRequest).where(CrawlRequest.url == url)
+        select_crawl_req_query = select(CrawlRequest).where(CrawlRequest.seed_url == url)
         existing_crawl_request = (await session.exec(select_crawl_req_query)).one()
       except exc.NoResultFound:
         existing_crawl_request = None
@@ -57,12 +59,32 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
         "Location": f"/crawl/status/{existing_crawl_request.id}"
       })
     
+    if not url.startswith(("http://", "https://")):
+      url = "https://" + url
+
+    parsed = urlparse(url)
+    host = parsed.netloc
+    scheme = parsed.scheme
+
+    base_url = f"{scheme}://{host}"
+
+    # fetch the robots.txt
+    robots_text = ""
+    try:
+        response = requests.get(f"{base_url}/robots.txt", timeout=5)
+        if response.status_code == 200:
+            robots_text = response.text
+    except requests.RequestException:
+        robots_text = ""
+
     # create crawl request
     crawl_request_mo = CrawlRequest(
-      url=url,
+      seed_url=url.strip(),
+      base_url=base_url,
       max_depth=depth,
       max_pages=max_pages,
-      status=CrawlStatus.PENDING
+      status=CrawlStatus.PENDING,
+      robots=robots_text
     )
 
     async with AsyncSession(engine) as session:
@@ -88,12 +110,14 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
       crawl_body = crawl_request_mo.model_dump(mode="json")
       
       await publisher.publish("crawl_request", {
-        "url": crawl_body["url"],
+        "crawl_id": crawl_request_mo.id,
+        "base_url": crawl_request_mo.base_url,
+        "url": crawl_request_mo.seed_url,
         "depth": 0
       })
 
       logger.info(f"Crawl request {crawl_request_mo.id} sent to queue")
-      return crawl_request_mo
+      return crawl_body
     except Exception as e:
       logger.error("Failed to publish crawl request: %s", e, exc_info=True)
 

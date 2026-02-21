@@ -19,6 +19,8 @@ class Task:
     task_id: str
     depth: int
     url: str
+    base_url: str
+    crawl_id: str
     message: aio_pika.IncomingMessage
     document_id: Optional[str] = None
 

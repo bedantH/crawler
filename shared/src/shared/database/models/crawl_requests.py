@@ -17,10 +17,12 @@ class CrawlRequest(SQLModel, table=True):
     )
 
   id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-  url: str = Field(nullable=False, unique=True, index=True)
+  seed_url: str = Field(nullable=False, unique=True, index=True)
+  base_url: str = Field(nullable=False)
   max_depth: int = Field(default=1, ge=1, le=10)
   max_pages: int = Field(default=50, ge=1, le=100)
   status: CrawlStatus = Field(default=CrawlStatus.PENDING, nullable=False, index=True)
+  robots: str = Field(nullable=True, default=None)
 
   created_at: datetime = Field(default_factory=datetime.utcnow)
   updated_at: datetime = Field(default_factory=datetime.utcnow)

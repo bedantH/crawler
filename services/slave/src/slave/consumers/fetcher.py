@@ -3,6 +3,7 @@ import aiohttp
 from slave.entities.worker import Worker
 from slave.entities.task import Task
 
+
 async def fetch_worker(worker: Worker, stop_event: asyncio.Event):
     while not stop_event.is_set():
         try:
@@ -10,9 +11,8 @@ async def fetch_worker(worker: Worker, stop_event: asyncio.Event):
         except asyncio.TimeoutError:
             continue
 
-        worker.master_client.report_task_update(
-            task_id=task.task_id,
-            status="running"
+        await worker.master_client.report_task_update(
+            task_id=task.task_id, status="running"
         )
 
         try:
@@ -25,9 +25,8 @@ async def fetch_worker(worker: Worker, stop_event: asyncio.Event):
             await worker.send_to_parser(task)
         except Exception as e:
             print(f"Fetch failed for task {task}: {e}")
-            worker.master_client.report_task_update(
-                task_id=task.task_id,
-                status="failed"
+            await worker.master_client.report_task_update(
+                task_id=task.task_id, status="failed"
             )
             task.message.nack(requeue=False)
         finally:

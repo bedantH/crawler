@@ -7,12 +7,14 @@ from typing import ClassVar as _ClassVar, Optional as _Optional
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class FrontierRequest(_message.Message):
-    __slots__ = ("url", "depth")
+    __slots__ = ("url", "depth", "crawl_id")
     URL_FIELD_NUMBER: _ClassVar[int]
     DEPTH_FIELD_NUMBER: _ClassVar[int]
+    CRAWL_ID_FIELD_NUMBER: _ClassVar[int]
     url: _containers.RepeatedScalarFieldContainer[str]
     depth: int
-    def __init__(self, url: _Optional[_Iterable[str]] = ..., depth: _Optional[int] = ...) -> None: ...
+    crawl_id: str
+    def __init__(self, url: _Optional[_Iterable[str]] = ..., depth: _Optional[int] = ..., crawl_id: _Optional[str] = ...) -> None: ...
 
 class FrontierResponse(_message.Message):
     __slots__ = ("status",)

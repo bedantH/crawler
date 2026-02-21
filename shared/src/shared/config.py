@@ -1,9 +1,16 @@
-AMQP_URL="amqp://admin:password@localhost/"
-MAX_TASKS_THRESHOLD=5
+import os
 
-MASTER_PROTO_SERVER="localhost:50052"
-FRONTIER_PROTO_SERVER="localhost:50051"
+AMQP_URL = os.environ.get("AMPQ_URL", "")
+MAX_TASKS_THRESHOLD = 5
+MAX_TASK_RETRIES = 3
+
+MASTER_PROTO_SERVER = os.environ.get("MASTER_PROTO", "localhost:50052")
+FRONTIER_PROTO_SERVER = os.environ.get("FRONTIER_PROTO", "localhost:50051")
 
 MISSED_HBS_ALLOWED = 3
 HEARTBEAT_INTERVAL = 5
 HEARTBEAT_TIMEOUT = 15
+
+USER_AGENT = "crawler"
+
+REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")

@@ -5,6 +5,7 @@ package shared.protos.frontier;
 message FrontierRequest {
   repeated string url = 1;
   int32 depth = 2;
+  string crawl_id = 3;
 }
 
 message FrontierResponse {

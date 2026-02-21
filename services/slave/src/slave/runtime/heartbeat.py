@@ -3,6 +3,7 @@ from slave.outbound.master_client import MasterClient
 from shared.queue.connection import MQConnection
 from shared.utils import logger
 
+
 class Heartbeat:
     def __init__(self, master_client: MasterClient, worker_id: str | None = None):
         self.master_client = master_client
@@ -24,16 +25,17 @@ class Heartbeat:
         while not stop_event.is_set():
             try:
                 tasks_in_queue = await self.get_tasks_in_queue()
-                
+
                 status = "busy" if tasks_in_queue > 0 else "idle"
-                
-                success = self.master_client.send_heartbeat(
-                    status=status,
-                    tasks_in_queue=tasks_in_queue
+
+                success = await self.master_client.send_heartbeat(
+                    status=status, tasks_in_queue=tasks_in_queue
                 )
-                
+
                 if success:
-                    logger.info(f"Heartbeat sent for {self.worker_id} (tasks: {tasks_in_queue})")
+                    logger.info(
+                        f"Heartbeat sent for {self.worker_id} (tasks: {tasks_in_queue})"
+                    )
                 else:
                     logger.warning(f"Heartbeat failed for {self.worker_id}")
             except Exception as e:
@@ -43,5 +45,3 @@ class Heartbeat:
                 await asyncio.wait_for(stop_event.wait(), timeout=30)
             except asyncio.TimeoutError:
                 continue
-
-    

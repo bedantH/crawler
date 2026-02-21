@@ -1,5 +1,5 @@
 import asyncio
-from signal import signal
+from signal import SIGINT, SIGTERM
 from dotenv import load_dotenv
 from slave.config import WORKER_ID
 from slave.runtime.consumer import WorkerConsumer
@@ -13,40 +13,41 @@ from services.slave.src.slave.outbound.master_client import MasterClient
 
 load_dotenv()
 
+
 async def main():
     stop_event = asyncio.Event()
     master_client = MasterClient()
-    
-    worker = Worker(
-        worker_id=WORKER_ID,
-        master_client=master_client
-    )
+
+    worker = Worker(worker_id=WORKER_ID, master_client=master_client)
 
     consumer = WorkerConsumer(
         worker=worker,
         exchange_name=f"worker_{WORKER_ID}",
         queue_name=f"worker_{WORKER_ID}_queue",
         routing_key=f"worker_{WORKER_ID}_task",
-        fetcher_queue=worker.fetch_queue
+        fetcher_queue=worker.fetch_queue,
     )
 
-    heartbeat = Heartbeat(master_client=worker.master_client, worker_id=worker.worker_id)
+    heartbeat = Heartbeat(
+        master_client=worker.master_client, worker_id=worker.worker_id
+    )
 
     logger.info(f"Worker {WORKER_ID} starting...")
-        
+
     loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGINT, stop_event.set)
+    loop.add_signal_handler(SIGINT, stop_event.set)
+    loop.add_signal_handler(SIGTERM, stop_event.set)
 
     # Gather all concurrent tasks: RabbitMQ consumer, Heartbeat, and Pipe Workers
     await asyncio.gather(
         consumer.start(stop_event=stop_event),
         heartbeat.start_loop(stop_event=stop_event),
-
         # queue workers
         fetch_worker(worker, stop_event),
         parser_worker(worker, stop_event),
-        indexer_worker(worker, stop_event)
+        indexer_worker(worker, stop_event),
     )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     asyncio.run(main())
