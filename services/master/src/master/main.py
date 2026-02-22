@@ -4,6 +4,7 @@ from master.core.heartbeat import Heartbeat
 from master.core.consumer import MasterConsumer
 from master.core.master_grpc_server import serve
 from shared.utils import logger
+from shared.database.setup_db import create_db_tables
 
 
 async def main():
@@ -17,6 +18,9 @@ async def main():
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, signal_handler)
 
+    logger.info("Creating database tables...")
+    await create_db_tables()
+
     heartbeat = Heartbeat(stop_event=stop_event)
 
     logger.info("Starting Master RabbitMQ consumer...")
@@ -26,6 +30,7 @@ async def main():
         routing_key="crawl_request",
     )
 
+    logger.info("Starting all master tasks (consumer, heartbeat, gRPC server)...")
     await asyncio.gather(
         consumer.start(stop_event=stop_event),
         heartbeat.monitor_loop(),

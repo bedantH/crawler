@@ -8,9 +8,14 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "aio-pika>=9.5.8",
+    "asyncpg>=0.30.0",
     "grpcio>=1.76.0",
     "grpcio-tools>=1.76.0",
-    "psycopg2>=2.9.11",
+    "protobuf>=5.0.0",
+    "psycopg2-binary>=2.9.11",
+    "redis>=7.2.0",
+    "sqlmodel>=0.0.31",
     "uuid>=1.30",
 ]
 

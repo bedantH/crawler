@@ -1,6 +1,6 @@
 import os
 
-AMQP_URL = os.environ.get("AMPQ_URL", "")
+AMQP_URL = os.environ.get("RABBITMQ_URL") or os.environ.get("AMQP_URL", "")
 MAX_TASKS_THRESHOLD = 5
 MAX_TASK_RETRIES = 3
 

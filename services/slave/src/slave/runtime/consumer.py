@@ -22,7 +22,9 @@ class WorkerConsumer(BaseConsumer):
 
     async def on_message(self, message: aio_pika.IncomingMessage):
         data = json.loads(message.body)
-        logger.info(f"Received message: {data}")
+
+        logger.info("[worker:consumer] ← Received task: task_id=%s url=%s depth=%s",
+                    data.get("task_id"), data.get("url"), data.get("depth"))
 
         try:
             task = Task(
@@ -31,16 +33,19 @@ class WorkerConsumer(BaseConsumer):
                 url=data["url"],
                 base_url=data["base_url"],
                 crawl_id=data["crawl_id"],
-                message=message, # holds the incoming rabbitmq msg object, allows us to acknowledg from further sub processes
+                message=message,
             )
 
-            # mark the task as assigned
+            logger.info("[worker:consumer] → Reporting 'assigned' to master for task_id=%s", task.task_id)
             await self.worker.master_client.report_task_update(
                 task_id=task.task_id, status="assigned"
             )
 
+            logger.info("[worker:consumer] → Enqueuing task_id=%s to fetcher queue", task.task_id)
             await self.fetcher_queue.put(task)
+
         except Exception as e:
             logger.exception(
-                "Error occurred with the payload from Worker Queue. Skipping..."
+                "[worker:consumer] ✗ Error processing payload for task_id=%s — skipping",
+                data.get("task_id"),
             )

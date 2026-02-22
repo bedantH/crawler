@@ -9,7 +9,7 @@ from slave.entities.worker import Worker
 from slave.consumers.parser import parser_worker
 from slave.consumers.indexer import indexer_worker
 from slave.consumers.fetcher import fetch_worker
-from services.slave.src.slave.outbound.master_client import MasterClient
+from slave.outbound.master_client import MasterClient
 
 load_dotenv()
 

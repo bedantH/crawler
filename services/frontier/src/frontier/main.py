@@ -3,7 +3,8 @@ from sqlmodel import select
 from sqlalchemy import exc
 from shared.database.models.crawl_requests import CrawlRequest, CrawlStatus
 from sqlmodel.ext.asyncio.session import AsyncSession
-import requests
+from shared.database.setup_db import create_db_tables
+import aiohttp
 
 from shared.database.engine import engine
 from shared.queue.base_publisher import BasePublisher
@@ -13,14 +14,19 @@ from contextlib import asynccontextmanager
 from shared.utils import logger
 from urllib.parse import urlparse
 
-def start_grpc_server():
-  import threading
-  grpc_thread = threading.Thread(target=serve, daemon=True)
-  grpc_thread.start()
+import asyncio
+
+_grpc_server_task = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-  start_grpc_server()
+  await create_db_tables()
+  
+  # run grpc server natively in the event loop along with FastAPI
+  global _grpc_server_task
+  _grpc_server_task = asyncio.create_task(serve())
+  
+  logger.info("Frontier service started")
   logger.info("Frontier service started")
   
   try:
@@ -55,7 +61,7 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
         existing_crawl_request = None
 
     if existing_crawl_request:
-      return HTTPException(status_code=409, detail="Crawl request already exists", headers={
+      raise HTTPException(status_code=409, detail="Crawl request already exists", headers={
         "Location": f"/crawl/status/{existing_crawl_request.id}"
       })
     
@@ -71,10 +77,11 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
     # fetch the robots.txt
     robots_text = ""
     try:
-        response = requests.get(f"{base_url}/robots.txt", timeout=5)
-        if response.status_code == 200:
-            robots_text = response.text
-    except requests.RequestException:
+        async with aiohttp.ClientSession() as http_session:
+            async with http_session.get(f"{base_url}/robots.txt", timeout=aiohttp.ClientTimeout(total=5)) as response:
+                if response.status == 200:
+                    robots_text = await response.text()
+    except Exception:
         robots_text = ""
 
     # create crawl request
@@ -96,10 +103,10 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
 
       except exc.DuplicateColumnError as e:
         logger.error("Duplicate Column: %s", e, exc_info=True)
-        return HTTPException(status_code=409, detail="Crawl Request already Exists")
+        raise HTTPException(status_code=409, detail="Crawl Request already Exists")
       except Exception as e:
         logger.error("Failed to insert crawl request: %s", e, exc_info=True)
-        return HTTPException(status_code=500, detail="Failed to insert crawl request")
+        raise HTTPException(status_code=500, detail="Failed to insert crawl request")
 
     logger.info(f"Created crawl request with ID: {crawl_request_mo.id}")
     
@@ -110,7 +117,7 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
       crawl_body = crawl_request_mo.model_dump(mode="json")
       
       await publisher.publish("crawl_request", {
-        "crawl_id": crawl_request_mo.id,
+        "crawl_id": str(crawl_request_mo.id),
         "base_url": crawl_request_mo.base_url,
         "url": crawl_request_mo.seed_url,
         "depth": 0
@@ -123,5 +130,5 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
 
   except Exception as e:
     logger.error("Internal Server Error: %s", e, exc_info=True)
-    return HTTPException(status_code=500, detail="Internal Server Error")
+    raise HTTPException(status_code=500, detail="Internal Server Error")
   

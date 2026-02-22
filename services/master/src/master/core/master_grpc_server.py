@@ -1,10 +1,10 @@
 import json
 import asyncio
 import grpc
-import master.proto.master_pb2 as master__pb2
-import master.proto.master_pb2_grpc as master_pb2_grpc
+import shared.protos.master.master_pb2 as master__pb2
+import shared.protos.master.master_pb2_grpc as master_pb2_grpc
 from shared.database.models.worker import WorkerStatus, Worker
-from shared.database.models.task import Task
+from shared.database.models.task import Task, TaskStatus
 from typing import override
 from shared.utils import logger
 from datetime import datetime
@@ -28,6 +28,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
     async def ReportTaskUpdate(
         self, request: master__pb2.TaskUpdateRequest, context: grpc.aio.ServicerContext
     ):
+        logger.info("[master:grpc] ← Received task update from worker: %s", request.worker_id)
         async with self._semaphore:
             try:
                 worker_id = request.worker_id
@@ -71,7 +72,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                 now = datetime.utcnow()
                 task_data = json.loads(str(task.payload))
 
-                update_data: dict[str, Any] = {"status": status}
+                update_data: dict[str, Any] = {"status": TaskStatus(status)}
                 worker_update_data = {}
 
                 if status == "running":
@@ -102,7 +103,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                             task_id=str(task.id),
                             task_data=json.loads(str(task.payload)),
                         )
-                        update_data["status"] = "cancelled"
+                        update_data["status"] = TaskStatus.CANCELLED
 
                 async with AsyncSession(engine) as session:
                     await session.exec(
@@ -136,6 +137,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
     async def HandleHeartbeat(
         self, request: master__pb2.HeartbeatRequest, context: grpc.aio.ServicerContext
     ):
+        logger.info("[master:grpc] ← Received heartbeat from worker: %s", request.worker_id)
         async with self._semaphore:
             try:
                 worker_id = request.worker_id
@@ -144,7 +146,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
 
                 async with AsyncSession(engine) as session:
                     select_worker_st = select(Worker).where(
-                        (Worker.id == worker_id) & (Worker.status != "failed")
+                        (Worker.id == worker_id) & (Worker.status != WorkerStatus.FAILED)
                     )
                     worker = (await session.exec(select_worker_st)).first()
                 if worker == None or status not in ["busy", "idle", "shutting_down"]:
@@ -155,7 +157,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                         update(Worker)
                         .where(Worker.id == worker_id) # type: ignore
                         .values(
-                            status=status,
+                            status=WorkerStatus(status),
                             last_heartbeat=datetime.utcnow(),
                             tasks_in_queue=tasks_in_queue,
                         )

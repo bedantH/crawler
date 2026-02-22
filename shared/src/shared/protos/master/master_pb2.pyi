@@ -7,16 +7,14 @@ from typing import ClassVar as _ClassVar, Optional as _Optional
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class HeartbeatRequest(_message.Message):
-    __slots__ = ("worker_id", "tasks_completed", "tasks_in_queue", "status")
+    __slots__ = ("worker_id", "status", "tasks_in_queue")
     WORKER_ID_FIELD_NUMBER: _ClassVar[int]
-    TASKS_COMPLETED_FIELD_NUMBER: _ClassVar[int]
-    TASKS_IN_QUEUE_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
+    TASKS_IN_QUEUE_FIELD_NUMBER: _ClassVar[int]
     worker_id: str
-    tasks_completed: int
-    tasks_in_queue: int
     status: str
-    def __init__(self, worker_id: _Optional[str] = ..., tasks_completed: _Optional[int] = ..., tasks_in_queue: _Optional[int] = ..., status: _Optional[str] = ...) -> None: ...
+    tasks_in_queue: int
+    def __init__(self, worker_id: _Optional[str] = ..., status: _Optional[str] = ..., tasks_in_queue: _Optional[int] = ...) -> None: ...
 
 class HeartbeatResponse(_message.Message):
     __slots__ = ("heartbeat_ack",)

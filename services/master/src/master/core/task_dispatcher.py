@@ -30,14 +30,14 @@ class TaskDispatcher:
                         .select_from(Worker)
                         .outerjoin(Task, Task.worker_id == Worker.id) # type: ignore
                         .where(Worker.id != exclude_worker_id)
-                        .group_by(str(Worker.id))
+                        .group_by(Worker.id) # type: ignore
                     )
                 else:
                     query = (
                         select(Worker.id, func.count(Task.id).label("task_count")) # type: ignore
                         .select_from(Worker)
                         .outerjoin(Task, Task.worker_id == Worker.id) # type: ignore
-                        .group_by(str(Worker.id))
+                        .group_by(Worker.id) #type: ignore
                     )
 
                 results = (await session.exec(query)).all()
@@ -45,11 +45,15 @@ class TaskDispatcher:
                     WorkerStatsModel(id=row[0], task_count=row[1]) for row in results
                 ]
 
+                logger.info(f"All workers: {all_workers}")
+
                 if len(all_workers) == 0 or all(
                     worker.task_count == MAX_TASKS_THRESHOLD for worker in all_workers
                 ):
-                    target_worker_id = self.worker_manager.create_worker()  # starts a new worker container and creates respective queues for it
+                    logger.info("Creating a new worker")
+                    target_worker_id = await self.worker_manager.create_worker()  # starts a new worker container and creates respective queues for it
                 else:
+                    logger.info("Assigning to the least busy worker")
                     least_task_worker = all_workers[0]
                     for worker in all_workers:
                         if worker.task_count < least_task_worker.task_count:
@@ -68,9 +72,13 @@ class TaskDispatcher:
                 exclude_worker_id=exclude_worker_id
             )
 
-            assignment_status = self.worker_manager.assign_task_to_worker(
+            if not target_worker_id:
+                raise Exception("No available worker found")
+
+            assignment_status = await self.worker_manager.assign_task_to_worker(
                 task_id=task_id, worker_id=target_worker_id
             )
+            
             if not assignment_status:
                 raise Exception(
                     f"Failed to assign Task({task_id}) to Worker({target_worker_id})"
@@ -99,7 +107,7 @@ class TaskDispatcher:
 
             task_id = task.id
 
-            assignment_status = self.worker_manager.assign_task_to_worker(
+            assignment_status = await self.worker_manager.assign_task_to_worker(
                 task_id=task_id, worker_id=target_worker_id
             )
 

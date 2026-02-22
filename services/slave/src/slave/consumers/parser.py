@@ -33,7 +33,7 @@ def extract_links(base_url, soup):
         if not href.startswith("http"):
             link["href"] = base_url + href
         
-        if not href.startswith("tel:") or not href.startswith("mailto:"):
+        if not href.startswith("tel:") and not href.startswith("mailto:"):
             unique_links.add(link["href"].strip())
 
     return list(unique_links)
@@ -153,7 +153,7 @@ async def parser_worker(worker: Worker, stop_event: asyncio.Event):
 
             # send the links
             frontier_client = FrontierClient()
-            frontier_client.send_crawl_request(
+            await frontier_client.send_crawl_request(
                 url=extracted_data.links, depth=task.depth, crawl_id=task.crawl_id
             )
 
@@ -162,7 +162,7 @@ async def parser_worker(worker: Worker, stop_event: asyncio.Event):
                 task_id=task.task_id, status="completed"
             )
 
-            task.message.ack()
+            await task.message.ack()
 
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=0.5)
@@ -175,7 +175,7 @@ async def parser_worker(worker: Worker, stop_event: asyncio.Event):
                 task_id=task.task_id, status="failed"
             )
 
-            task.message.nack(requeue=False)
+            await task.message.nack(requeue=False)
         finally:
             worker.parser_queue.task_done()
 

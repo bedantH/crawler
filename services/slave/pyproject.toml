@@ -8,11 +8,14 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "aio-pika>=9.5.8",
     "aiohttp>=3.13.3",
     "beautifulsoup4>=4.14.3",
+    "grpcio>=1.76.0",
     "html5lib>=1.1",
-    "pika>=1.3.2",
     "python-dotenv>=1.2.1",
+    "shared",
+    "watchfiles>=1.0.0",
 ]
 
 [project.scripts]
@@ -21,3 +24,6 @@ slave = "slave:main"
 [build-system]
 requires = ["uv_build>=0.9.5,<0.10.0"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+shared = { workspace = true }

@@ -28,7 +28,7 @@ class WorkerManager:
                 registered_at=datetime.utcnow()
             )
 
-            status = create_worker_container(worker_id)
+            status = await create_worker_container(worker_id)
 
             if status is True:
                 async with AsyncSession(engine) as session:
@@ -74,7 +74,7 @@ class WorkerManager:
             publisher = BasePublisher(f"worker_{worker_id}")
             await publisher.publish(f"worker_{worker_id}_task", {
                 **payload,
-                task_id: task_id
+                "task_id": str(task_id)
             })
 
             logger.info(f"Task({task_id}) pushed to worker's queue")

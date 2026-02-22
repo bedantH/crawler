@@ -10,16 +10,20 @@ RUN pip install uv
 # Copy project metadata
 COPY pyproject.toml uv.lock ./
 COPY services/slave/pyproject.toml ./services/slave/
+COPY services/master/pyproject.toml ./services/master/
+COPY services/frontier/pyproject.toml ./services/frontier/
 COPY shared/pyproject.toml ./shared/
 
-# Install dependencies for the workspace
-RUN uv sync --package slave --no-dev --no-editable
+# Install only third-party deps first (no source needed yet — better layer caching)
+RUN uv sync --package slave --no-dev --no-install-workspace
 
 # Copy the service source and shared library
 COPY services/slave/src/ ./services/slave/src/
+COPY services/slave/README.md ./services/slave/
 COPY shared/src/ ./shared/src/
+COPY shared/README.md ./shared/
 
-# Sync again to ensure everything is in place
+# Now install the project itself with source available
 RUN uv sync --package slave --no-dev --no-editable
 
 # Set Python path to find both service and shared modules

@@ -26,9 +26,10 @@ class Task(SQLModel, table=True):
     default_factory=uuid.uuid4
   )
 
-  worker_id: uuid.UUID = Field(
-      default=None,
-      foreign_key="worker.id",
+  worker_id: Optional[uuid.UUID] = Field(
+    default=None,
+    foreign_key="worker.id",
+    nullable=True
   )
 
   payload: Optional[str] = Field(nullable=True)
@@ -36,7 +37,7 @@ class Task(SQLModel, table=True):
   retries: int = Field(default=0, nullable=False)
 
   created_at: datetime = Field(default_factory=datetime.utcnow)
-  started_at: Optional[datetime] = None
-  finished_at: Optional[datetime] = None
+  started_at: Optional[datetime] = Field(default=None)
+  finished_at: Optional[datetime] = Field(default=None)
 
-  error: Optional[str] = None
+  # error: Optional[str] = None

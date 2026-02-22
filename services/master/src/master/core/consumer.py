@@ -10,7 +10,10 @@ class MasterConsumer(BaseConsumer):
             body = message.body
             data = json.loads(body)
 
+            logger.info("[master:consumer] ← Received crawl request: url=%s depth=%s crawl_id=%s",
+                        data.get("url"), data.get("depth"), data.get("crawl_id"))
+
             dispatcher = TaskDispatcher()
             await dispatcher.dispatch(task_data=data)
 
-            logger.info(f" [x] Received {body}")
+            logger.info("[master:consumer] ✓ Dispatched task for url=%s", data.get("url"))

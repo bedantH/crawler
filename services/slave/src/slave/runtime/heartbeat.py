@@ -3,7 +3,6 @@ from slave.outbound.master_client import MasterClient
 from shared.queue.connection import MQConnection
 from shared.utils import logger
 
-
 class Heartbeat:
     def __init__(self, master_client: MasterClient, worker_id: str | None = None):
         self.master_client = master_client
