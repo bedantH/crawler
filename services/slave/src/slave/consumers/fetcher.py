@@ -16,7 +16,7 @@ async def fetch_worker(worker: Worker, stop_event: asyncio.Event):
         logger.info("[worker:fetcher] ← Got task_id=%s url=%s", task.task_id, task.url)
 
         await worker.master_client.report_task_update(
-            task_id=task.task_id, status="running"
+            task_id=task.task_id, status="running", crawl_id=task.crawl_id
         )
         logger.info("[worker:fetcher] → Reported 'running' to master for task_id=%s", task.task_id)
 
@@ -35,7 +35,7 @@ async def fetch_worker(worker: Worker, stop_event: asyncio.Event):
             logger.error("[worker:fetcher] ✗ Fetch failed for task_id=%s url=%s — %s",
                          task.task_id, task.url, e)
             await worker.master_client.report_task_update(
-                task_id=task.task_id, status="failed"
+                task_id=task.task_id, status="failed", crawl_id=task.crawl_id
             )
             await task.message.nack(requeue=False)
         finally:

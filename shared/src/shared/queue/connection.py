@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from shared.config import AMQP_URL
 import aio_pika
+from shared.utils import logger
 
 class MQConnection:
     _connection = None
@@ -37,3 +38,12 @@ class MQConnection:
     async def get_channel(self):
         connection = await self.connect()
         return await connection.channel()
+    
+    async def get_tasks_in_queue(self, queue_name: str) -> int:
+        try:
+            async with self.channel() as ch:
+                res = await ch.declare_queue(queue_name, passive=True)
+                return res.declaration_result.message_count or 0
+        except Exception as e:
+            logger.debug(f"Queue {queue_name} not found or error: {e}")
+            return 0

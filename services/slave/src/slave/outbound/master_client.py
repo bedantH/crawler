@@ -1,4 +1,5 @@
 import grpc
+from shared.database.models.worker import WorkerStatus
 import shared.protos.master.master_pb2 as master_pb2
 import shared.protos.master.master_pb2_grpc as master_pb2_grpc
 from slave.config import WORKER_ID
@@ -30,14 +31,14 @@ class MasterClient:
                     pass
             self._channel = grpc.aio.insecure_channel(
                 f"{self.master_host}:{self.master_port}"
-            )
+        )
             self._stub = master_pb2_grpc.MasterServiceStub(self._channel)
         return self._channel
 
-    async def send_heartbeat(self, status: str = "idle", tasks_in_queue: int = 0):
+    async def send_heartbeat(self, status: WorkerStatus = WorkerStatus.IDLE, tasks_in_queue: int = 0):
         try:
             request = master_pb2.HeartbeatRequest(
-                worker_id=WORKER_ID, status=status, tasks_in_queue=tasks_in_queue
+                worker_id=WORKER_ID, status=status.value, tasks_in_queue=tasks_in_queue
             )
             stub = await self._get_stub()
             if stub is not None:
@@ -48,10 +49,10 @@ class MasterClient:
             await self._reset_channel()
             return False
 
-    async def report_task_update(self, task_id: str, status: str):
+    async def report_task_update(self, task_id: str, crawl_id: str, status: str):
         try:
             request = master_pb2.TaskUpdateRequest(
-                worker_id=WORKER_ID, task_id=task_id, status=status
+                worker_id=WORKER_ID, crawl_id=crawl_id, task_id=task_id, status=status
             )
             stub = await self._get_stub()
             if stub is not None:

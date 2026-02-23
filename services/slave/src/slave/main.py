@@ -29,7 +29,9 @@ async def main():
     )
 
     heartbeat = Heartbeat(
-        master_client=worker.master_client, worker_id=worker.worker_id
+        master_client=worker.master_client,
+        worker_id=worker.worker_id,
+        worker=worker
     )
 
     logger.info(f"Worker {WORKER_ID} starting...")

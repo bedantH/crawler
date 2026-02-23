@@ -16,6 +16,7 @@ message TaskUpdateRequest {
   string worker_id = 1;
   string task_id = 2;
   string status = 3;
+  string crawl_id = 4;
 }
 
 message TaskUpdateResponse {

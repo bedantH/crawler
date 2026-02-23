@@ -15,7 +15,13 @@ from frontier.lib.verify import RobotsParser
 from shared.queue.base_publisher import BasePublisher
 from shared.cache.redis import RedisClient
 from shared.config import REDIS_HOST
+from urllib.parse import urlparse
 
+def match_base(base_url, url):
+    parsed = urlparse(url)
+    b_url = f"{parsed.scheme}://{parsed.netloc}"
+
+    return base_url == b_url
 
 async def _handle_crawl_request(urls: list, depth: int, crawl_id: str):
     logger.info(
@@ -41,13 +47,17 @@ async def _handle_crawl_request(urls: list, depth: int, crawl_id: str):
             "Maximum crawl depth reached for %s. Skipping %s discovered URLs.",
             crawl_id, len(urls),
         )
-        return "skipped"
+        return "skipped"    
 
     robots = crawl_request.robots
     rp = RobotsParser(robots=robots)
 
     allowed_urls = [url for url in urls if rp.can_fetch(url)]
     not_allowed_urls = [url for url in urls if not rp.can_fetch(url)]
+
+    if crawl_request.total_urls_completed + len(allowed_urls) > crawl_request.max_pages:
+        remaining = crawl_request.max_pages - crawl_request.total_urls_completed
+        allowed_urls = allowed_urls[:remaining]
 
     if not_allowed_urls:
         logger.info(
@@ -63,14 +73,17 @@ async def _handle_crawl_request(urls: list, depth: int, crawl_id: str):
 
     queued = 0
     for url in allowed_urls:
-        if client.get(url) is None:
+        # match base to avoid crawling social media or other irrelevant links from the website
+        if client.get(f"crawl:visited:{url}") is None and match_base(crawl_request.base_url, url):
             await publisher.publish("crawl_request", {
                 "crawl_id": str(crawl_request.id),
                 "base_url": crawl_request.base_url,
                 "url": url,
                 "depth": depth + 1,
             })
+            
             queued += 1
+            client.incr(f"crawl:in_flight:{crawl_request.id}")
 
     logger.info(
         "[frontier:grpc] ✓ Queued %d/%d URLs for crawl_id=%s depth=%d",

@@ -23,14 +23,16 @@ class HeartbeatResponse(_message.Message):
     def __init__(self, heartbeat_ack: _Optional[str] = ...) -> None: ...
 
 class TaskUpdateRequest(_message.Message):
-    __slots__ = ("worker_id", "task_id", "status")
+    __slots__ = ("worker_id", "task_id", "status", "crawl_id")
     WORKER_ID_FIELD_NUMBER: _ClassVar[int]
     TASK_ID_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
+    CRAWL_ID_FIELD_NUMBER: _ClassVar[int]
     worker_id: str
     task_id: str
     status: str
-    def __init__(self, worker_id: _Optional[str] = ..., task_id: _Optional[str] = ..., status: _Optional[str] = ...) -> None: ...
+    crawl_id: str
+    def __init__(self, worker_id: _Optional[str] = ..., task_id: _Optional[str] = ..., status: _Optional[str] = ..., crawl_id: _Optional[str] = ...) -> None: ...
 
 class TaskUpdateResponse(_message.Message):
     __slots__ = ("acknowledged",)

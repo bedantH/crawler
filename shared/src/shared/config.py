@@ -14,3 +14,4 @@ HEARTBEAT_TIMEOUT = 15
 USER_AGENT = "crawler"
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+CONSUMER_INACTIVITY_TIMEOUT = int(os.environ.get("CONSUMER_INACTIVITY_TIMEOUT", 300))

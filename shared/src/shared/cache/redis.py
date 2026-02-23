@@ -34,3 +34,14 @@ class RedisClient:
         if not self._check_connection():
             raise ConnectionError("Redis connection is not initialized.")
         self._redis.delete(key)  #type: ignore
+
+    def incr(self, key: str):
+        if not self._check_connection():
+            raise ConnectionError("Redis connection is not initialized.")
+        return self._redis.incr(key)  #type: ignore
+
+    def decr(self, key: str):
+        if not self._check_connection():
+            raise ConnectionError("Redis connection is not initialized.")
+        return self._redis.decr(key)  #type: ignore
+

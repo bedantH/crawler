@@ -98,6 +98,7 @@ class TaskDispatcher:
                 
             task = Task(
                 payload=json.dumps(task_data),
+                crawl_id=task_data['crawl_id']
             )
 
             async with AsyncSession(engine) as session:

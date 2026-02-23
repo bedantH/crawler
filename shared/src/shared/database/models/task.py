@@ -32,6 +32,12 @@ class Task(SQLModel, table=True):
     nullable=True
   )
 
+  crawl_id: Optional[uuid.UUID] = Field(
+    default=None,
+    foreign_key="crawlrequest.id",
+    nullable=True
+  )
+
   payload: Optional[str] = Field(nullable=True)
   status: TaskStatus = Field(nullable=False, default=TaskStatus.PENDING) # Pending, Assigned, Running, Completed, Failed, Rescheduled, Cancelled
   retries: int = Field(default=0, nullable=False)

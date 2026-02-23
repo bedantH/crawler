@@ -1,6 +1,7 @@
 import json
 import asyncio
 import grpc
+from shared.database.models.crawl_requests import CrawlRequest, CrawlStatus
 import shared.protos.master.master_pb2 as master__pb2
 import shared.protos.master.master_pb2_grpc as master_pb2_grpc
 from shared.database.models.worker import WorkerStatus, Worker
@@ -32,6 +33,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
         async with self._semaphore:
             try:
                 worker_id = request.worker_id
+                crawl_id = request.crawl_id
                 task_id = request.task_id
                 status = request.status
 
@@ -87,7 +89,36 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                     update_data["finished_at"] = now
 
                     # update redis
-                    client.set(task_data['url'], 'success')
+                    client.set(f"crawl:visited:{task_data['url']}", 'success')
+
+                    async with AsyncSession(engine) as session:
+                        select_crawl_request = select(CrawlRequest).where(CrawlRequest.id == crawl_id)
+                        crawl_request = (await session.exec(select_crawl_request)).first()
+
+                        if crawl_request is not None:
+                            new_urls_completed_count = crawl_request.total_urls_completed + 1
+                            remaining_count = client.decr(f"crawl:in_flight:{crawl_id}")
+
+                            update_crawl_data = {
+                                "total_urls_completed": new_urls_completed_count,
+                            }
+
+                            if remaining_count is not None and int(remaining_count) <= 0:
+                                client.delete(f"crawl:in_flight:{crawl_id}")
+                                update_crawl_data["status"] = CrawlStatus.COMPLETED
+
+                            update_crawl_request_st = (
+                                update(CrawlRequest)
+                                    .where(CrawlRequest.id == crawl_id) #type: ignore
+                                    .values(
+                                        **update_crawl_data
+                                    )    
+                            )
+
+                            await session.exec(update_crawl_request_st)
+                            await session.commit()
+                        else:
+                            logger.error("Crawl Request not Found for the ID: %s", crawl_id)
 
                 if status == "failed":
                     if task.retries < MAX_TASK_RETRIES:
@@ -104,6 +135,19 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                             task_data=json.loads(str(task.payload)),
                         )
                         update_data["status"] = TaskStatus.CANCELLED
+
+                        # decrement in-flight counter on terminal failure too
+                        client = RedisClient(host=REDIS_HOST)
+                        remaining_count = client.decr(f"crawl:in_flight:{crawl_id}")
+                        if remaining_count is not None and int(remaining_count) <= 0:
+                            client.delete(f"crawl:in_flight:{crawl_id}")
+                            async with AsyncSession(engine) as session:
+                                await session.exec(
+                                    update(CrawlRequest)
+                                    .where(CrawlRequest.id == crawl_id)  # type: ignore
+                                    .values(status=CrawlStatus.COMPLETED)
+                                )
+                                await session.commit()
 
                 async with AsyncSession(engine) as session:
                     await session.exec(
@@ -149,7 +193,13 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                         (Worker.id == worker_id) & (Worker.status != WorkerStatus.FAILED)
                     )
                     worker = (await session.exec(select_worker_st)).first()
-                if worker == None or status not in ["busy", "idle", "shutting_down"]:
+
+                if worker is None:
+                    logger.warning("[master:grpc] Heartbeat rejected: worker %s not found or in FAILED state", worker_id)
+                    return master__pb2.HeartbeatResponse(heartbeat_ack="failed")
+
+                if status not in ["busy", "idle", "shutting_down"]:
+                    logger.warning("[master:grpc] Heartbeat rejected: invalid status '%s' from worker %s", status, worker_id)
                     return master__pb2.HeartbeatResponse(heartbeat_ack="failed")
 
                 async with AsyncSession(engine) as session:

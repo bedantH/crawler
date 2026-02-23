@@ -1,14 +1,12 @@
 from datetime import datetime
 from enum import Enum
 from sqlmodel import SQLModel, Field, Column
-from typing import Optional
 from sqlalchemy import Index
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
 
 class WorkerStatus(Enum):
   IDLE = "idle"
-  RUNNING = "running"
   BUSY = "busy"
   FAILED = "failed"
   STOPPED = "stopped"
@@ -24,6 +22,7 @@ class Worker(SQLModel, table=True):
     sa_column=Column(UUID(as_uuid=True), primary_key=True),
     default_factory=uuid.uuid4
   )
+
   hostname: str = Field(nullable=False)
 
   status: WorkerStatus = Field(nullable=False, default=WorkerStatus.IDLE)  # idle, busy, failed, shutting_down

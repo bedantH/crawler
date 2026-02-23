@@ -10,6 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from shared.database.engine import engine
 from shared.utils import logger
 from shared.queue.base_publisher import BasePublisher
+from sqlmodel import update
 
 class WorkerManager:
     def __init__(self):
@@ -103,8 +104,15 @@ class WorkerManager:
                 except Exception as e:
                     logger.error("Error stopping/removing container for worker %s: %s", worker_id, e, exc_info=True)
 
-                worker.status = WorkerStatus.STOPPED
-                session.add(worker)
+                update_worker_st = (
+                    update(Worker)
+                        .where(Worker.id == worker_id)
+                        .values(
+                            status = WorkerStatus.STOPPED
+                        )
+                )
+
+                await session.exec(update_worker_st)
                 await session.commit()
 
             return True

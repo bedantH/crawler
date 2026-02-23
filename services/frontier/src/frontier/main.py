@@ -13,6 +13,8 @@ from .frontier_grpc_server import serve
 from contextlib import asynccontextmanager
 from shared.utils import logger
 from urllib.parse import urlparse
+from shared.cache.redis import RedisClient
+from shared.config import REDIS_HOST
 
 import asyncio
 
@@ -115,13 +117,18 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
 
       publisher = BasePublisher("crawl_requests")
       crawl_body = crawl_request_mo.model_dump(mode="json")
-      
+
       await publisher.publish("crawl_request", {
         "crawl_id": str(crawl_request_mo.id),
         "base_url": crawl_request_mo.base_url,
         "url": crawl_request_mo.seed_url,
         "depth": 0
       })
+
+      client = RedisClient(host=REDIS_HOST)
+
+      # set crawl request id in redis to 1 as an Inflight counter
+      client.set(f"crawl:in_flight:{crawl_request_mo.id}", 1)
 
       logger.info(f"Crawl request {crawl_request_mo.id} sent to queue")
       return crawl_body

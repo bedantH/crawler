@@ -2,13 +2,16 @@ import asyncio
 from slave.outbound.master_client import MasterClient
 from shared.queue.connection import MQConnection
 from shared.utils import logger
+from shared.config import HEARTBEAT_INTERVAL
+from slave.entities.worker import Worker
 
 class Heartbeat:
-    def __init__(self, master_client: MasterClient, worker_id: str | None = None):
+    def __init__(self, master_client: MasterClient, worker: Worker, worker_id: str | None = None):
         self.master_client = master_client
         self.mq_conn = MQConnection()
         self.worker_id = worker_id
         self.queue_name = f"worker_{worker_id}_queue"
+        self.worker = worker
 
     async def get_tasks_in_queue(self):
         try:
@@ -25,10 +28,8 @@ class Heartbeat:
             try:
                 tasks_in_queue = await self.get_tasks_in_queue()
 
-                status = "busy" if tasks_in_queue > 0 else "idle"
-
                 success = await self.master_client.send_heartbeat(
-                    status=status, tasks_in_queue=tasks_in_queue
+                    status=self.worker.status, tasks_in_queue=tasks_in_queue
                 )
 
                 if success:
@@ -41,6 +42,6 @@ class Heartbeat:
                 logger.error(f"Error in heartbeat loop: {e}")
 
             try:
-                await asyncio.wait_for(stop_event.wait(), timeout=30)
+                await asyncio.wait_for(stop_event.wait(), timeout=HEARTBEAT_INTERVAL)
             except asyncio.TimeoutError:
                 continue
