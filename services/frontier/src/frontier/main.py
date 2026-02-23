@@ -13,7 +13,7 @@ from .frontier_grpc_server import serve
 from contextlib import asynccontextmanager
 from shared.utils import logger
 from urllib.parse import urlparse
-from shared.cache.redis import RedisClient
+from shared.cache.redis import init_redis, get_redis, close_redis
 from shared.config import REDIS_HOST
 
 import asyncio
@@ -23,17 +23,18 @@ _grpc_server_task = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
   await create_db_tables()
+  await init_redis(host=REDIS_HOST)
   
   # run grpc server natively in the event loop along with FastAPI
   global _grpc_server_task
   _grpc_server_task = asyncio.create_task(serve())
   
   logger.info("Frontier service started")
-  logger.info("Frontier service started")
   
   try:
     yield
   finally:
+    await close_redis()
     logger.info("Frontier service stopped")
 
 app = FastAPI(
@@ -125,10 +126,10 @@ async def crawl(request: Request, crawl_request: CrawlRequestDTO):
         "depth": 0
       })
 
-      client = RedisClient(host=REDIS_HOST)
+      redis = get_redis()
 
       # set crawl request id in redis to 1 as an Inflight counter
-      client.set(f"crawl:in_flight:{crawl_request_mo.id}", 1)
+      await redis.set(f"crawl:in_flight:{crawl_request_mo.id}", 1)
 
       logger.info(f"Crawl request {crawl_request_mo.id} sent to queue")
       return crawl_body

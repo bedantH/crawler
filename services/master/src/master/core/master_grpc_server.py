@@ -17,8 +17,8 @@ from shared.database.engine import engine
 from sqlmodel import select, update, and_
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import Any
-from shared.config import MAX_TASK_RETRIES, REDIS_HOST
-from shared.cache.redis import RedisClient 
+from shared.config import MAX_TASK_RETRIES
+from shared.cache.redis import get_redis
 
 class MasterServicer(master_pb2_grpc.MasterServiceServicer):
     def __init__(self):
@@ -81,7 +81,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                     update_data["started_at"] = now
 
                 if status == "completed":
-                    client = RedisClient(host=REDIS_HOST)
+                    client = get_redis()
 
                     worker_update_data["total_tasks_completed"] = (
                         worker.total_tasks_completed + 1
@@ -89,7 +89,7 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                     update_data["finished_at"] = now
 
                     # update redis
-                    client.set(f"crawl:visited:{task_data['url']}", 'success')
+                    await client.set(f"crawl:visited:{task_data['url']}", 'success')
 
                     async with AsyncSession(engine) as session:
                         select_crawl_request = select(CrawlRequest).where(CrawlRequest.id == crawl_id)
@@ -97,14 +97,14 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
 
                         if crawl_request is not None:
                             new_urls_completed_count = crawl_request.total_urls_completed + 1
-                            remaining_count = client.decr(f"crawl:in_flight:{crawl_id}")
+                            remaining_count = await client.decr(f"crawl:in_flight:{crawl_id}")
 
                             update_crawl_data = {
                                 "total_urls_completed": new_urls_completed_count,
                             }
 
                             if remaining_count is not None and int(remaining_count) <= 0:
-                                client.delete(f"crawl:in_flight:{crawl_id}")
+                                await client.delete(f"crawl:in_flight:{crawl_id}")
                                 update_crawl_data["status"] = CrawlStatus.COMPLETED
 
                             update_crawl_request_st = (
@@ -137,10 +137,10 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                         update_data["status"] = TaskStatus.CANCELLED
 
                         # decrement in-flight counter on terminal failure too
-                        client = RedisClient(host=REDIS_HOST)
-                        remaining_count = client.decr(f"crawl:in_flight:{crawl_id}")
+                        client = get_redis()
+                        remaining_count = await client.decr(f"crawl:in_flight:{crawl_id}")
                         if remaining_count is not None and int(remaining_count) <= 0:
-                            client.delete(f"crawl:in_flight:{crawl_id}")
+                            await client.delete(f"crawl:in_flight:{crawl_id}")
                             async with AsyncSession(engine) as session:
                                 await session.exec(
                                     update(CrawlRequest)

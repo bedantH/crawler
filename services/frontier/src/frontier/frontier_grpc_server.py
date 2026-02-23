@@ -13,8 +13,7 @@ from shared.utils import logger
 from uuid import UUID
 from frontier.lib.verify import RobotsParser
 from shared.queue.base_publisher import BasePublisher
-from shared.cache.redis import RedisClient
-from shared.config import REDIS_HOST
+from shared.cache.redis import get_redis
 from urllib.parse import urlparse
 
 def match_base(base_url, url):
@@ -69,25 +68,30 @@ async def _handle_crawl_request(urls: list, depth: int, crawl_id: str):
         return "skipped"
 
     publisher = BasePublisher("crawl_requests")
-    client = RedisClient(host=REDIS_HOST)
+    redis = get_redis()
 
-    queued = 0
+    to_queue = []
     for url in allowed_urls:
-        # match base to avoid crawling social media or other irrelevant links from the website
-        if client.get(f"crawl:visited:{url}") is None and match_base(crawl_request.base_url, url):
-            await publisher.publish("crawl_request", {
-                "crawl_id": str(crawl_request.id),
-                "base_url": crawl_request.base_url,
-                "url": url,
-                "depth": depth + 1,
-            })
-            
-            queued += 1
-            client.incr(f"crawl:in_flight:{crawl_request.id}")
+        visited = await redis.get(f"crawl:visited:{url}")
+        if visited is None and match_base(crawl_request.base_url, url):
+            to_queue.append(url)
 
+    if not to_queue:
+        logger.warning("No allowed URLs for crawl_id=%s", crawl_id)
+        return "skipped"
+
+    await redis.incrby(f"crawl:in_flight:{crawl_request.id}", len(to_queue))
+    for url in to_queue:
+        await publisher.publish("crawl_request", {
+            "crawl_id": str(crawl_request.id),
+            "base_url": crawl_request.base_url,
+            "url": url,
+            "depth": depth + 1,
+        })
+            
     logger.info(
         "[frontier:grpc] ✓ Queued %d/%d URLs for crawl_id=%s depth=%d",
-        queued, len(allowed_urls), crawl_id, depth,
+        len(to_queue), len(allowed_urls), crawl_id, depth,
     )
     return "queued"
 

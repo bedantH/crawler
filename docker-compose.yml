@@ -1,4 +1,30 @@
 services:
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: meilisearch
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_MASTER_KEY=aSimpleMasterKey
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:7700/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  meilisearch-admin:
+    image: eyeix/meilisearch-ui:latest
+    container_name: meilisearch-admin
+    ports:
+      - "7701:24900"
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+    networks:
+      - app-network
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -121,6 +147,8 @@ services:
       rabbitmq:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+      meilisearch:
         condition: service_healthy
     networks:
       - app-network

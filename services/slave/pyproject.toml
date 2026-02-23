@@ -13,6 +13,7 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "grpcio>=1.76.0",
     "html5lib>=1.1",
+    "meilisearch-python-sdk>=7.0.1",
     "python-dotenv>=1.2.1",
     "shared",
     "watchfiles>=1.0.0",

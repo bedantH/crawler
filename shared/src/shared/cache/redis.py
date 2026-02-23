@@ -1,47 +1,33 @@
-from redis import Redis
-from typing import Optional
+from redis.asyncio import Redis
+from shared.utils import logger
 
-class RedisClient:
-    _instance: Optional['RedisClient'] = None
-    _redis: Optional[Redis] = None
+_redis: Redis | None = None
 
-    def __new__(cls, host: str = "localhost", port: int = 6379, db: int = 0):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._redis = Redis(host=host, port=port, db=db, decode_responses=True)
-        return cls._instance
 
-    def _check_connection(self) -> bool:
-        """Returns True if Redis connection is initialized, False otherwise."""
-        return self._redis is not None
+async def init_redis(host: str = "localhost", port: int = 6379, db: int = 0) -> None:
+    """Initialize the module-level Redis connection. Call once at service startup."""
+    global _redis
+    if _redis is not None:
+        return
 
-    def set(self, key: str, value: str, ex: Optional[int] = None):
-        if not self._check_connection():
-            raise ConnectionError("Redis connection is not initialized.")
-        self._redis.set(key, value, ex=ex)  #type: ignore
+    _redis = Redis(host=host, port=port, db=db, decode_responses=True)
+    await _redis.ping()
+    logger.info("Redis connection established (%s:%d/%d)", host, port, db)
 
-    def get(self, key: str) -> Optional[str]:
-        if not self._check_connection():
-            raise ConnectionError("Redis connection is not initialized.")
-        return self._redis.get(key)  #type: ignore
-    
-    def ismember(self, key: str) -> bool:
-        if not self._check_connection():
-            raise ConnectionError("Redis connection is not initialized.")
-        return self._redis.sismember(key) #type: ignore
 
-    def delete(self, key: str):
-        if not self._check_connection():
-            raise ConnectionError("Redis connection is not initialized.")
-        self._redis.delete(key)  #type: ignore
+def get_redis() -> Redis:
+    """Return the shared async Redis client. Raises if init_redis() hasn't been called."""
+    if _redis is None:
+        raise RuntimeError(
+            "Redis not initialized. Call `await init_redis()` during service startup."
+        )
+    return _redis
 
-    def incr(self, key: str):
-        if not self._check_connection():
-            raise ConnectionError("Redis connection is not initialized.")
-        return self._redis.incr(key)  #type: ignore
 
-    def decr(self, key: str):
-        if not self._check_connection():
-            raise ConnectionError("Redis connection is not initialized.")
-        return self._redis.decr(key)  #type: ignore
-
+async def close_redis() -> None:
+    """Gracefully close the Redis connection."""
+    global _redis
+    if _redis is not None:
+        await _redis.aclose()
+        _redis = None
+        logger.info("Redis connection closed")

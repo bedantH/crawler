@@ -8,6 +8,8 @@ from shared.database.engine import engine
 from shared.database.models.document import Document
 from slave.outbound.crawl_request import FrontierClient
 from shared.database.models.worker import WorkerStatus
+from urllib.parse import urlparse, urlunparse, urljoin
+from slave.outbound.meilisearch_client import add_document
 
 def parse_html(raw_html):
     soup = BeautifulSoup(raw_html, "html.parser")
@@ -18,7 +20,7 @@ def parse_html(raw_html):
 
 def extract_headings(soup):
     headings = soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
-    heading_texts = [heading.get_text(strip=True) for heading in headings]
+    heading_texts = [heading.get_text(strip=True).lower() for heading in headings]
 
     return heading_texts
 
@@ -28,13 +30,20 @@ def extract_links(base_url, soup):
     unique_links = set()
 
     for link in links:
-        href: str = link["href"]
+        href = link["href"]
 
-        if not href.startswith("http"):
-            link["href"] = base_url + href
-        
-        if not href.startswith("tel:") and not href.startswith("mailto:"):
-            unique_links.add(link["href"].strip())
+        if not href.startswith(("tel:", "mailto:")):
+            absolute_url = urljoin(base_url, href)
+            parsed = urlparse(absolute_url)
+            cleaned_path = parsed.path.rstrip("/") or "/"
+
+            cleaned = parsed._replace(
+                path=cleaned_path,
+                query="",
+                fragment=""
+            )
+
+            unique_links.add(urlunparse(cleaned))
 
     return list(unique_links)
 
@@ -45,9 +54,9 @@ def extract_meta(soup):
 
     for tag in meta_tags:
         if "name" in tag.attrs and "content" in tag.attrs:
-            meta_info[tag["name"]] = tag["content"]
+            meta_info[tag["name"]] = tag["content"].lower()
         elif "property" in tag.attrs and "content" in tag.attrs:
-            meta_info[tag["property"]] = tag["content"]
+            meta_info[tag["property"]] = tag["content"].lower()
 
     return meta_info
 
@@ -55,7 +64,7 @@ def extract_meta(soup):
 def extract_body_text(soup):
     body = soup.find("body")
     if body:
-        return body.get_text(separator=" ", strip=True)
+        return body.get_text(separator=" ", strip=True).lower()
 
     return ""
 
@@ -162,8 +171,13 @@ async def parser_worker(worker: Worker, stop_event: asyncio.Event):
                 task_id=task.task_id, status="completed", crawl_id=task.crawl_id
             )
 
-            await task.message.ack()
             worker.status = WorkerStatus.IDLE
+
+            # send to meilisearch
+            document_mo = document.model_dump(mode="json")
+            await add_document(document=document_mo)
+
+            await task.message.ack()
 
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=0.5)

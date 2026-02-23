@@ -5,6 +5,8 @@ from master.core.consumer import MasterConsumer
 from master.core.master_grpc_server import serve
 from shared.utils import logger
 from shared.database.setup_db import create_db_tables
+from shared.cache.redis import init_redis, close_redis
+from shared.config import REDIS_HOST
 
 
 async def main():
@@ -21,6 +23,9 @@ async def main():
     logger.info("Creating database tables...")
     await create_db_tables()
 
+    logger.info("Connecting to Redis...")
+    await init_redis(host=REDIS_HOST)
+
     heartbeat = Heartbeat(stop_event=stop_event)
 
     logger.info("Starting Master RabbitMQ consumer...")
@@ -31,12 +36,16 @@ async def main():
     )
 
     logger.info("Starting all master tasks (consumer, heartbeat, gRPC server)...")
-    await asyncio.gather(
-        consumer.start(stop_event=stop_event),
-        heartbeat.monitor_loop(),
-        serve(stop_event=stop_event),
-    )
+    try:
+        await asyncio.gather(
+            consumer.start(stop_event=stop_event),
+            heartbeat.monitor_loop(),
+            serve(stop_event=stop_event),
+        )
+    finally:
+        await close_redis()
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+
