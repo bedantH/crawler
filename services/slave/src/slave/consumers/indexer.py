@@ -2,6 +2,7 @@ import asyncio
 from shared.utils import logger
 from slave.entities.worker import Worker
 
+# TODO: implement this when writing your own indexer and BML ranker for search
 async def indexer_worker(worker: Worker, stop_event: asyncio.Event):
     logger.info("Indexer worker started")
     while not stop_event.is_set():

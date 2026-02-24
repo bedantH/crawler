@@ -6,7 +6,7 @@ async def add_document(document: dict):
     logger.info(f"Adding document to meilisearch: {document}")
 
     async with AsyncClient("http://meilisearch:7700", "aSimpleMasterKey") as client:
-        index = client.index("documents", {"primaryKey": "id"})
+        index = await client.create_index("documents", primary_key="id")
 
         try:
             await index.add_documents([document])

@@ -2,7 +2,7 @@ import json
 import uuid
 from sqlmodel import SQLModel, select
 from shared.database.engine import engine
-from shared.database.models.worker import Worker
+from shared.database.models.worker import Worker, WorkerStatus
 from shared.database.models.task import Task, TaskStatus
 from sqlalchemy import func
 from shared.config import MAX_TASKS_THRESHOLD
@@ -24,21 +24,11 @@ class TaskDispatcher:
         target_worker_id = None
         try:
             async with AsyncSession(engine) as session:
+                query = select(Worker.id, Worker.tasks_in_queue).where(
+                    Worker.status.not_in([WorkerStatus.STOPPED, WorkerStatus.FAILED, WorkerStatus.SHUTTING_DOWN]) # type: ignore
+                )
                 if exclude_worker_id:
-                    query = (
-                        select(Worker.id, func.count(Task.id).label("task_count")) # type: ignore
-                        .select_from(Worker)
-                        .outerjoin(Task, Task.worker_id == Worker.id) # type: ignore
-                        .where(Worker.id != exclude_worker_id)
-                        .group_by(Worker.id) # type: ignore
-                    )
-                else:
-                    query = (
-                        select(Worker.id, func.count(Task.id).label("task_count")) # type: ignore
-                        .select_from(Worker)
-                        .outerjoin(Task, Task.worker_id == Worker.id) # type: ignore
-                        .group_by(Worker.id) #type: ignore
-                    )
+                    query = query.where(Worker.id != exclude_worker_id) # type: ignore
 
                 results = (await session.exec(query)).all()
                 all_workers = [
@@ -48,7 +38,7 @@ class TaskDispatcher:
                 logger.info(f"All workers: {all_workers}")
 
                 if len(all_workers) == 0 or all(
-                    worker.task_count == MAX_TASKS_THRESHOLD for worker in all_workers
+                    worker.task_count >= MAX_TASKS_THRESHOLD for worker in all_workers
                 ):
                     logger.info("Creating a new worker")
                     target_worker_id = await self.worker_manager.create_worker()  # starts a new worker container and creates respective queues for it

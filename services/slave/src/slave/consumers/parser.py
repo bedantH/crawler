@@ -185,7 +185,7 @@ async def parser_worker(worker: Worker, stop_event: asyncio.Event):
             except asyncio.TimeoutError:
                 pass
         except Exception as e:
-            logger.error(f"Parser failed for task {task}: {e}")
+            logger.error(f"Parser failed for task {task.task_id}, {task.url}: {e}")
             await worker.master_client.report_task_update(
                 task_id=task.task_id, status="failed", crawl_id=task.crawl_id
             )

@@ -124,6 +124,17 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                     if task.retries < MAX_TASK_RETRIES:
                         update_data["retries"] = task.retries + 1
 
+                        async with AsyncSession(engine) as session:
+                            await session.exec(
+                                update(Task)
+                                .where(Task.id == task_id) # type: ignore
+                                .where(Task.worker_id == worker_id) # type: ignore
+                                .values(**update_data)
+                            )
+                            await session.commit()
+                        
+                        update_data.clear()
+
                         task_dispatcher = TaskDispatcher()
                         await task_dispatcher.dispatch_by_task_id(
                             task_id=task_id, exclude_worker_id=worker_id
@@ -150,12 +161,13 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                                 await session.commit()
 
                 async with AsyncSession(engine) as session:
-                    await session.exec(
-                        update(Task)
-                        .where(Task.id == task_id) # type: ignore
-                        .where(Task.worker_id == worker_id) # type: ignore
-                        .values(**update_data)
-                    )
+                    if update_data:
+                        await session.exec(
+                            update(Task)
+                            .where(Task.id == task_id) # type: ignore
+                            .where(Task.worker_id == worker_id) # type: ignore
+                            .values(**update_data)
+                        )
 
                     if worker_update_data:
                         await session.exec(
@@ -164,7 +176,8 @@ class MasterServicer(master_pb2_grpc.MasterServiceServicer):
                             .values(**worker_update_data)
                         )
 
-                    await session.commit()
+                    if update_data or worker_update_data:
+                        await session.commit()
 
                 return master__pb2.TaskUpdateResponse(acknowledged=True)
 
